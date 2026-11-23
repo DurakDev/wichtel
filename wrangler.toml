@@ -8,5 +8,5 @@ not_found_handling = "single-page-application"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "wichteln-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_name = "wichtel-db"
+database_id = "c2909cb4-46bd-4190-91f4-02d5ea47637c"
