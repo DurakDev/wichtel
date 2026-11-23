@@ -1,4 +1,4 @@
-name = "wichteln"
+name = "wichtel"
 main = "src/worker.js"
 compatibility_date = "2026-11-23"
 
