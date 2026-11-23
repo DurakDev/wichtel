@@ -11,3 +11,14 @@ run_worker_first = ["/api/*"]
 binding = "DB"
 database_name = "wichtel-db"
 database_id = "c2909cb4-46bd-4190-91f4-02d5ea47637c"
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = false
+head_sampling_rate = 1
+persist = true
