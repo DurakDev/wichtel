@@ -31,7 +31,39 @@ async function saveEdit(){const exclusions=[...document.querySelectorAll('input[
 function wichtelAnimation(){shell(`${header('Deine Auslosung')}<div class="card glass p-6 sm:p-10 text-center"><div class="mx-auto max-w-md"><div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">Ein kleiner Moment …</div><div class="relative mx-auto h-64 w-64"><div class="wiggle absolute inset-x-10 bottom-8 rounded-[40%] bg-pine px-8 pb-5 pt-12 text-7xl shadow-2xl">🎒</div><div class="absolute left-1/2 top-5 -translate-x-1/2 text-7xl">🧝‍♂️</div><div class="paper absolute left-1/2 top-20 -translate-x-1/2 rounded-lg bg-white px-6 py-4 text-3xl shadow-xl">📜</div></div><h1 class="serif text-3xl text-pine">Der Wichtel greift in den Sack …</h1><div class="mt-6 h-2 overflow-hidden rounded-full bg-black/5"><div id="bar" class="h-full w-0 rounded-full bg-gold transition-all duration-[10000ms] ease-linear"></div></div><p class="mt-3 text-xs text-slate-400">Dein Geschenkgeheimnis wird gleich gelüftet.</p></div></div>`);requestAnimationFrame(()=>document.querySelector('#bar')?.style.setProperty('width','100%'));setTimeout(renderResult,10000)}
 function renderResult(){const a=state.joined.assignment;if(!a)return renderEdit();shell(`${header('Dein Wichtel')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 py-8 text-center text-white"><div class="text-5xl">🎁</div><div class="mt-3 text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h1 class="serif mt-2 text-5xl">${esc(a.receiverName)}</h1></div><div class="p-6 sm:p-8"><div class="rounded-3xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 text-pine">${esc(a.receiverWish||'Dieser Wichtel hat keinen Wunsch hinterlegt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div><div class="mt-5">${button(`${icon('edit','w-4 h-4')} Meine Angaben bearbeiten`,'renderEdit()',false)}</div></div></div>`)}
 async function initParticipant(){await loadParticipant(participantToken);if(state.joined.status==='started'&&state.joined.assignment){const key='wichteln-revealed-'+participantToken;if(!localStorage.getItem(key)){localStorage.setItem(key,'1');wichtelAnimation()}else renderResult()}else renderEdit()}
-async function createEvent(){const name=document.querySelector('#eventName').value.trim();const organizer=document.querySelector('#orgName').value.trim();const self=document.querySelector('#self').checked;if(!name||!organizer)return alert('Bitte Runde und deinen Namen angeben.');const r=await fetch(`${API}/events`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,organizer,joinSelf:self})});const d=await r.json();if(!r.ok)return alert(d.error||'Fehler');localStorage.setItem('wichteln-admin-token',d.adminToken);if(d.organizerParticipantToken)localStorage.setItem('wichteln-organizer-participant-token',d.organizerParticipantToken);history.replaceState({},'',`?admin=${d.adminToken}`);location.reload()}
+async function createEvent(){
+  const name=document.querySelector('#eventName').value.trim();
+  const organizer=document.querySelector('#orgName').value.trim();
+  const self=document.querySelector('#self').checked;
+  if(!name||!organizer)return alert('Bitte Runde und deinen Namen angeben.');
+
+  try{
+    const r=await fetch(`${API}/events`,{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({name,organizer,joinSelf:self})
+    });
+
+    const text=await r.text();
+    let d={};
+    try{d=JSON.parse(text)}catch{}
+
+    if(!r.ok){
+      return alert(`Serverfehler (${r.status}): ${d.error||text.slice(0,300)||'Keine Antwort'}`);
+    }
+
+    if(!d.adminToken){
+      return alert(`Unerwartete Serverantwort:\n\n${text.slice(0,500)}`);
+    }
+
+    localStorage.setItem('wichteln-admin-token',d.adminToken);
+    if(d.organizerParticipantToken)localStorage.setItem('wichteln-organizer-participant-token',d.organizerParticipantToken);
+    history.replaceState({},'',`?admin=${d.adminToken}`);
+    location.reload();
+  }catch(err){
+    alert(`Verbindung zur Wichtel-App fehlgeschlagen.\n\n${err.message}`);
+  }
+}
 async function adminLoad(){const r=await fetch(`${API}/admin/${encodeURIComponent(adminToken)}`);const d=await r.json();if(!r.ok)return alert(d.error||'Organisator-Link ungültig.');state.event=d}
 async function renderAdmin(){await adminLoad();const e=state.event;const started=e.status==='started';shell(`${header('Organisator') }<div class="card glass p-6 sm:p-8"><div class="flex items-start justify-between gap-4"><div><div class="text-4xl">🎄</div><h1 class="serif mt-3 text-4xl text-pine">${esc(e.name)}</h1><p class="mt-2 text-sm text-slate-500">${e.participants.length} Teilnehmer</p></div><span class="rounded-full px-3 py-1 text-xs font-bold ${started?'bg-gold/20 text-pine':'bg-pine/10 text-pine'}">${started?'Ausgelost':'Anmeldung offen'}</span></div><div class="mt-7 space-y-3">${e.participants.map(p=>`<div class="rounded-2xl bg-white px-4 py-4 ring-1 ring-black/5"><div class="flex items-center justify-between"><div><div class="font-bold text-pine">${esc(p.name)}</div><div class="mt-1 text-xs text-slate-500">${p.wish?esc(p.wish):'Kein Wunsch hinterlegt'} · ${p.exclusionsCount} Ausschlüsse</div></div><div class="text-xl">${p.joined?'✓':'…'}</div></div></div>`).join('')}</div><div class="mt-6 grid gap-3">${!started?button(`${icon('spark','w-4 h-4')} Wichteln starten`,'startDraw()'):button(`${icon('eye','w-4 h-4')} Zuordnungen anzeigen`,'showAssignments()',false)}${button(`${icon('copy','w-4 h-4')} Teilnehmer-Link kopieren`,'copyPublicLink()',false)}${localStorage.getItem('wichteln-organizer-participant-token')?button(`${icon('gift','w-4 h-4')} Mein persönlicher Wichtel-Link`,'copyOrganizerParticipantLink()',false):''}</div><div id="assignments" class="mt-4"></div></div>`)}
 async function startDraw(){if(!confirm('Auslosung jetzt starten? Danach können Teilnehmer ihre Angaben nicht mehr ändern.'))return;const r=await fetch(`${API}/admin/${encodeURIComponent(adminToken)}/start`,{method:'POST'});const d=await r.json();if(!r.ok)return alert(d.error||'Keine gültige Zuordnung gefunden.');renderAdmin()}
