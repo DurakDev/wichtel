@@ -1,0 +1,14 @@
+{
+  "name": "wichteln",
+  "private": true,
+  "version": "1.0.1",
+  "description": "Mobile-first Secret Santa PWA with Cloudflare Worker and D1",
+  "scripts": {
+    "build": "node -e \"console.log('Wichteln: no frontend build step required; Wrangler serves the static assets.')\"",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute wichteln-db --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
