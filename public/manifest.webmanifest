@@ -1,9 +1,17 @@
 {
-  "name": "Wichteln",
+  "name": "Wichteln 🎁",
   "short_name": "Wichteln",
+  "description": "Eine kleine, liebevolle Wichtel-App.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f7f2e8",
   "theme_color": "#10261d",
+  "lang": "de",
+  "categories": [
+    "lifestyle",
+    "social"
+  ],
   "icons": []
 }
