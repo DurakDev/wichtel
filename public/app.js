@@ -1,78 +1,968 @@
-const API = window.location.origin + '/api';
-const app = document.querySelector('#app');
-const params = new URLSearchParams(location.search);
-const adminToken = params.get('admin');
-const participantToken = params.get('p');
-const eventSlug = params.get('event') || location.pathname.split('/').filter(Boolean).pop();
+const API = window.location.origin + "/api";
 
-const state = { step: 1, name: '', wish: '', exclusions: [], participants: [], joined: null, event: null, loading:false };
+// ============================================================
+// WICHTELN – FRONTEND
+// ============================================================
 
-function icon(name, cls='w-5 h-5'){ const paths={arrow:'M5 12h14m-6-6 6 6-6 6',gift:'M20 12v10H4V12m16 0H4m16 0V8H4v4m8-4v14M8 8a3 3 0 1 1 0-6c0 4 6 4 6 4m4 0a3 3 0 1 0 0-6c-2 0-4 6-4 6',lock:'M7 10V7a5 5 0 0 1 10 0v3m-12 0h14v10H5V10z',edit:'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4L16.5 3.5z',eye:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',copy:'M9 9h10v10H9zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',check:'M20 6 9 17l-5-5',spark:'M12 3l1.2 5.8L19 10l-5.8 1.2L12 17l-1.2-5.8L5 10l5.8-1.2L12 3z'};return `<svg class="${cls}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="${paths[name]||paths.spark}"/></svg>`}
-function esc(s=''){return s.replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-function shell(content, title='Wichteln'){app.innerHTML=`<div class="snow"><span>✦</span><span>❄</span><span>✧</span><span>❄</span><span>✦</span></div><main class="relative min-h-screen px-4 py-6 sm:py-10"><div class="mx-auto max-w-2xl">${content}</div></main>`;}
-function header(sub=''){return `<div class="mb-7 flex items-center justify-between"><div class="flex items-center gap-3"><div class="grid h-11 w-11 place-items-center rounded-2xl bg-pine text-2xl text-white shadow-lg">🎁</div><div><div class="font-bold tracking-tight text-pine">Wichteln</div><div class="text-xs text-slate-500">${esc(sub)}</div></div></div></div>`}
-function button(label, onclick, primary=true){return `<button onclick="${onclick}" class="btn inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-bold ${primary?'bg-pine text-white shadow-lg shadow-pine/15 hover:bg-pine2':'bg-white/70 text-pine ring-1 ring-black/5 hover:bg-white'}">${label}</button>`}
-function progress(n){return `<div class="mb-7 flex gap-2">${[1,2,3].map(i=>`<div class="progress-dot flex-1 ${i<n?'done':i===n?'active':''}"></div>`).join('')}</div>`}
-function renderJoin(){shell(`${header('Deine Einladung')}
-<div class="card glass overflow-hidden"><div class="bg-pine px-6 pb-7 pt-8 text-white"><div class="mb-5 text-5xl">🎄</div><h1 class="serif text-4xl leading-tight sm:text-5xl">Du bist eingeladen!</h1><p class="mt-3 max-w-md text-sm leading-6 text-white/75">Schön, dass du beim Wichteln dabei bist. Wir machen es ganz einfach.</p></div><div class="p-6 sm:p-8">${progress(1)}<label class="mb-2 block text-sm font-bold text-pine">Wie heißt du?</label><input id="name" autofocus value="${esc(state.name)}" class="w-full rounded-2xl border-0 bg-white px-4 py-4 text-lg shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="Dein Name"/><div class="mt-5">${button(`${icon('arrow','w-4 h-4')} Weiter`,'nextName()')}</div></div></div>`)}
-function nextName(){const v=document.querySelector('#name').value.trim();if(!v)return alert('Bitte gib deinen Namen ein.');state.name=v;renderIntro()}
-function renderIntro(){shell(`${header('Hallo '+state.name)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">✨</div><h1 class="serif text-4xl text-pine">Hallo ${esc(state.name)}!</h1><p class="mt-4 leading-7 text-slate-600">Schön, dass du dabei bist. Dein Wichtel wartet schon auf dich. 🎁</p><div class="my-7 rounded-2xl bg-cream p-5"><div class="font-bold text-pine">So funktioniert's</div><p class="mt-2 text-sm leading-6 text-slate-600">Du hinterlässt einen Wunsch und kannst Personen ausschließen. Später wird dir zufällig jemand zugeteilt.</p></div>${button(`${icon('arrow','w-4 h-4')} Weiter`,'renderWish()')}</div>`)}
-function renderWish(){shell(`${header('Schritt 2 von 3')}${progress(2)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><h1 class="serif text-4xl text-pine">Was könnte dein Wichtel dir schenken?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Ganz konkret oder nur eine kleine Idee. Du kannst das später jederzeit ändern.</p><textarea id="wish" rows="5" class="mt-6 w-full resize-none rounded-2xl border-0 bg-white p-4 shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="z. B. ein Buch, etwas zum Zeichnen, einen Gutschein …">${esc(state.wish)}</textarea><p class="mt-2 text-xs text-slate-400">Optional – keine Idee? Dann lass das Feld einfach leer.</p><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück','renderIntro()',false)}${button(`${icon('arrow','w-4 h-4')} Weiter`,'saveWish()')}</div></div>`)}
-function saveWish(){state.wish=document.querySelector('#wish').value.trim();loadParticipants().then(renderExclusions)}
-async function loadParticipants(){try{const r=await fetch(`${API}/events/${encodeURIComponent(eventSlug)}`);if(r.ok){const d=await r.json();state.event=d;state.participants=d.participants||[]}}catch(e){state.participants=[]}}
-function renderExclusions(){shell(`${header('Schritt 3 von 3')}${progress(3)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🚫</div><h1 class="serif text-4xl text-pine">Gibt es jemanden, den du nicht ziehen möchtest?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Du musst niemanden ausschließen. Du kannst deine Auswahl später noch ändern.</p><div class="mt-6 space-y-2">${state.participants.filter(p=>p.name!==state.name).map(p=>`<label class="flex cursor-pointer items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5"><span class="font-semibold text-pine">${esc(p.name)}</span><input type="checkbox" class="h-5 w-5 accent-pine" value="${p.id}" ${state.exclusions.includes(p.id)?'checked':''}/></label>`).join('') || `<div class="rounded-2xl bg-cream p-4 text-sm text-slate-600">Weitere Teilnehmer erscheinen hier, sobald sie sich angemeldet haben.</div>`}</div><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück','renderWish()',false)}${button(`${icon('check','w-4 h-4')} Teilnahme bestätigen`,'joinNow()')}</div></div>`)}
-async function joinNow(){state.exclusions=[...document.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);const r=await fetch(`${API}/events/${encodeURIComponent(eventSlug)}/join`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:state.name,wish:state.wish,exclusions:state.exclusions})});const d=await r.json();if(!r.ok)return alert(d.error||'Etwas ist schiefgelaufen.');state.joined=d;history.replaceState({},'',`?p=${d.token}`);localStorage.setItem('wichteln-token',d.token);renderJoined()}
-function renderJoined(){shell(`${header('Du bist dabei!')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎉</div><h1 class="serif text-4xl text-pine">Alles bereit!</h1><p class="mt-3 leading-7 text-slate-600">Bewahre deinen persönlichen Link gut auf. Hier kannst du deine Angaben später ändern und erfährst nach der Auslosung, wen du beschenkst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Deine Angaben</div><div class="mt-3 space-y-2 text-sm"><div><b>Name:</b> ${esc(state.name)}</div><div><b>Wunsch:</b> ${esc(state.wish||'Noch kein Wunsch')}</div></div></div><div class="mt-5">${button(`${icon('edit','w-4 h-4')} Angaben bearbeiten`,'editParticipant()',false)}</div><div class="mt-3">${button(`${icon('copy','w-4 h-4')} Persönlichen Link kopieren`,'copyLink()')}</div><p class="mt-3 text-center text-xs text-slate-400">Dein persönlicher Link bleibt hier auch nach der Auslosung gültig.</p></div>`)}
-async function copyLink(){await navigator.clipboard.writeText(location.href);alert('Link kopiert!')}
-async function editParticipant(){await loadParticipant(participantToken);renderEdit()}
-async function loadParticipant(token){const r=await fetch(`${API}/p/${encodeURIComponent(token)}`);const d=await r.json();if(!r.ok)return alert(d.error||'Link nicht gefunden.');state.joined=d;state.name=d.participant.name;state.wish=d.participant.wish||'';state.exclusions=d.participant.exclusions||[];state.participants=d.participants||[]}
-function renderEdit(){const locked=state.joined.status==='started';shell(`${header(locked?'Auslosung gestartet':'Angaben bearbeiten')}<div class="card glass p-6 sm:p-8"><div class="flex items-start justify-between gap-4"><div><div class="mb-3 text-4xl">${locked?'🔒':'✏️'}</div><h1 class="serif text-3xl text-pine">Deine Angaben</h1></div>${locked?'<span class="rounded-full bg-pine/10 px-3 py-1 text-xs font-bold text-pine">Gesperrt</span>':''}</div><p class="mt-3 text-sm leading-6 text-slate-600">${locked?'Die Auslosung wurde bereits durchgeführt. Deine Angaben können nicht mehr verändert werden.':'Du kannst alles bis zum Start der Auslosung ändern.'}</p><label class="mt-6 block text-sm font-bold text-pine">Name</label><input id="editName" ${locked?'disabled':''} value="${esc(state.name)}" class="mt-2 w-full rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5 disabled:opacity-60"/><label class="mt-5 block text-sm font-bold text-pine">Wunsch / Geschenkidee</label><textarea id="editWish" ${locked?'disabled':''} rows="4" class="mt-2 w-full resize-none rounded-2xl bg-white p-4 ring-1 ring-black/5 disabled:opacity-60">${esc(state.wish)}</textarea><div class="mt-5"><div class="text-sm font-bold text-pine">Ausschlüsse</div><div class="mt-2 space-y-2">${state.participants.filter(p=>p.id!==state.joined.participant.id).map(p=>`<label class="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5 ${locked?'opacity-60':''}"><span>${esc(p.name)}</span><input ${locked?'disabled':''} type="checkbox" value="${p.id}" ${state.exclusions.includes(p.id)?'checked':''} class="h-5 w-5 accent-pine"/></label>`).join('')}</div></div>${locked?`<div class="mt-6">${button('Zurück zur Zuordnung','renderResult()',false)}</div>`:`<div class="mt-6">${button(`${icon('check','w-4 h-4')} Änderungen speichern`,'saveEdit()')}</div>`}</div>`)}
-async function saveEdit(){const exclusions=[...document.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);const r=await fetch(`${API}/p/${participantToken}`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({name:document.querySelector('#editName').value.trim(),wish:document.querySelector('#editWish').value.trim(),exclusions})});const d=await r.json();if(!r.ok)return alert(d.error||'Speichern fehlgeschlagen.');await loadParticipant(participantToken);renderResult()}
-function wichtelAnimation(){shell(`${header('Deine Auslosung')}<div class="card glass p-6 sm:p-10 text-center"><div class="mx-auto max-w-md"><div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">Ein kleiner Moment …</div><div class="relative mx-auto h-64 w-64"><div class="wiggle absolute inset-x-10 bottom-8 rounded-[40%] bg-pine px-8 pb-5 pt-12 text-7xl shadow-2xl">🎒</div><div class="absolute left-1/2 top-5 -translate-x-1/2 text-7xl">🧝‍♂️</div><div class="paper absolute left-1/2 top-20 -translate-x-1/2 rounded-lg bg-white px-6 py-4 text-3xl shadow-xl">📜</div></div><h1 class="serif text-3xl text-pine">Der Wichtel greift in den Sack …</h1><div class="mt-6 h-2 overflow-hidden rounded-full bg-black/5"><div id="bar" class="h-full w-0 rounded-full bg-gold transition-all duration-[10000ms] ease-linear"></div></div><p class="mt-3 text-xs text-slate-400">Dein Geschenkgeheimnis wird gleich gelüftet.</p></div></div>`);requestAnimationFrame(()=>document.querySelector('#bar')?.style.setProperty('width','100%'));setTimeout(renderResult,10000)}
-function renderResult(){const a=state.joined.assignment;if(!a)return renderEdit();shell(`${header('Dein Wichtel')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 py-8 text-center text-white"><div class="text-5xl">🎁</div><div class="mt-3 text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h1 class="serif mt-2 text-5xl">${esc(a.receiverName)}</h1></div><div class="p-6 sm:p-8"><div class="rounded-3xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 text-pine">${esc(a.receiverWish||'Dieser Wichtel hat keinen Wunsch hinterlegt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div><div class="mt-5">${button(`${icon('edit','w-4 h-4')} Meine Angaben bearbeiten`,'renderEdit()',false)}</div></div></div>`)}
-async function initParticipant(){await loadParticipant(participantToken);if(state.joined.status==='started'&&state.joined.assignment){const key='wichteln-revealed-'+participantToken;if(!localStorage.getItem(key)){localStorage.setItem(key,'1');wichtelAnimation()}else renderResult()}else renderEdit()}
-async function createEvent(){
-  const name=document.querySelector('#eventName').value.trim();
-  const organizer=document.querySelector('#orgName').value.trim();
-  const self=document.querySelector('#self').checked;
-  if(!name||!organizer)return alert('Bitte Runde und deinen Namen angeben.');
+const app = document.querySelector("#app");
 
-  try{
-    const r=await fetch(`${API}/events`,{
-      method:'POST',
-      headers:{'content-type':'application/json'},
-      body:JSON.stringify({name,organizer,joinSelf:self})
+// ------------------------------------------------------------
+// Hilfsfunktionen
+// ------------------------------------------------------------
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getQuery(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+function save(key, value) {
+  localStorage.setItem(key, value);
+}
+
+function load(key) {
+  return localStorage.getItem(key);
+}
+
+function clearQuery() {
+  history.replaceState({}, "", window.location.pathname);
+}
+
+// ------------------------------------------------------------
+// API – zentraler Request
+// ------------------------------------------------------------
+
+async function apiRequest(url, options = {}) {
+  console.log("WICHTEL API REQUEST:", url, options);
+
+  let response;
+
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        "content-type": "application/json",
+        ...(options.headers || {}),
+      },
     });
+  } catch (error) {
+    console.error("WICHTEL API NETWORK ERROR:", error);
 
-    const text=await r.text();
-    let d={};
-    try{d=JSON.parse(text)}catch{}
+    throw new Error(
+      "Die Verbindung zur Wichtel-API konnte nicht hergestellt werden.\n\n" +
+      error.message
+    );
+  }
 
-    if(!r.ok){
-      return alert(`Serverfehler (${r.status}): ${d.error||text.slice(0,300)||'Keine Antwort'}`);
+  const text = await response.text();
+
+  console.log("WICHTEL API RESPONSE:", response.status, text);
+
+  let data;
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {
+      raw: text,
+    };
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+      data.message ||
+      text ||
+      `HTTP-Fehler ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+// ------------------------------------------------------------
+// Loading
+// ------------------------------------------------------------
+
+function loading(title = "Einen Moment…") {
+  app.innerHTML = `
+    <div class="page">
+      <div class="card center">
+        <div class="spinner"></div>
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+    </div>
+  `;
+}
+
+// ------------------------------------------------------------
+// Fehler
+// ------------------------------------------------------------
+
+function showError(error) {
+  console.error("WICHTEL ERROR:", error);
+
+  app.innerHTML = `
+    <div class="page">
+      <div class="card">
+        <div style="font-size:48px;text-align:center;">😕</div>
+
+        <h1>Da ist etwas schiefgelaufen</h1>
+
+        <p class="muted">
+          ${escapeHtml(error.message || String(error))}
+        </p>
+
+        <button onclick="location.reload()">
+          Erneut versuchen
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ------------------------------------------------------------
+// Startseite
+// ------------------------------------------------------------
+
+function renderHome() {
+  app.innerHTML = `
+    <div class="page">
+
+      <div class="hero">
+        <div class="hero-icon">🎄</div>
+
+        <h1>Wichteln</h1>
+
+        <p>
+          Erstelle deine eigene Wichtelrunde
+          und lade deine Freunde ein.
+        </p>
+      </div>
+
+      <div class="card">
+
+        <label for="eventName">
+          Name der Wichtelrunde
+        </label>
+
+        <input
+          id="eventName"
+          type="text"
+          placeholder="z. B. Weihnachten 2026"
+          autocomplete="off"
+        />
+
+        <label for="orgName">
+          Dein Name
+        </label>
+
+        <input
+          id="orgName"
+          type="text"
+          placeholder="z. B. Daniel"
+          autocomplete="name"
+        />
+
+        <label class="checkbox">
+          <input
+            id="self"
+            type="checkbox"
+            checked
+          />
+
+          <span>
+            Ich nehme selbst am Wichteln teil
+          </span>
+        </label>
+
+        <button
+          id="createButton"
+          type="button"
+        >
+          🎁 Wichtelrunde erstellen
+        </button>
+
+        <div
+          id="createStatus"
+          style="
+            margin-top:16px;
+            display:none;
+            white-space:pre-wrap;
+            word-break:break-word;
+          "
+        ></div>
+
+      </div>
+
+    </div>
+  `;
+
+  document
+    .querySelector("#createButton")
+    .addEventListener("click", createEvent);
+}
+
+// ------------------------------------------------------------
+// WICHTIG:
+// Wichtelrunde erstellen
+// ------------------------------------------------------------
+
+async function createEvent() {
+  const button = document.querySelector("#createButton");
+  const status = document.querySelector("#createStatus");
+
+  const name =
+    document.querySelector("#eventName").value.trim();
+
+  const organizer =
+    document.querySelector("#orgName").value.trim();
+
+  const joinSelf =
+    document.querySelector("#self").checked;
+
+  if (!name) {
+    alert("Bitte einen Namen für die Wichtelrunde eingeben.");
+    return;
+  }
+
+  if (joinSelf && !organizer) {
+    alert("Bitte deinen Namen eingeben.");
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "⏳ Wichtelrunde wird erstellt…";
+
+  status.style.display = "block";
+  status.textContent = "Verbinde mit der Wichtel-API…";
+
+  try {
+    console.log("=================================");
+    console.log("WICHTEL: CREATE EVENT");
+    console.log("API:", `${API}/events`);
+    console.log("Name:", name);
+    console.log("Organizer:", organizer);
+    console.log("Join self:", joinSelf);
+    console.log("=================================");
+
+    const data = await apiRequest(
+      `${API}/events`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          organizer,
+          joinSelf,
+        }),
+      }
+    );
+
+    console.log("CREATE EVENT SUCCESS:", data);
+
+    if (!data.adminToken) {
+      throw new Error(
+        "Die API antwortet zwar, aber es wurde kein adminToken zurückgegeben.\n\n" +
+        JSON.stringify(data, null, 2)
+      );
     }
 
-    if(!d.adminToken){
-      return alert(`Unerwartete Serverantwort:\n\n${text.slice(0,500)}`);
+    save(
+      "wichteln-admin-token",
+      data.adminToken
+    );
+
+    if (data.organizerParticipantToken) {
+      save(
+        "wichteln-organizer-participant-token",
+        data.organizerParticipantToken
+      );
     }
 
-    localStorage.setItem('wichteln-admin-token',d.adminToken);
-    if(d.organizerParticipantToken)localStorage.setItem('wichteln-organizer-participant-token',d.organizerParticipantToken);
-    history.replaceState({},'',`?admin=${d.adminToken}`);
-    location.reload();
-  }catch(err){
-    alert(`Verbindung zur Wichtel-App fehlgeschlagen.\n\n${err.message}`);
+    // --------------------------------------------------------
+    // ERFOLGSANZEIGE
+    // --------------------------------------------------------
+
+    status.innerHTML = `
+      <div style="
+        padding:16px;
+        border-radius:16px;
+        background:rgba(46,125,50,.12);
+      ">
+
+        <strong>🎉 Runde erfolgreich erstellt!</strong>
+
+        <br><br>
+
+        <strong>Admin-Link:</strong><br>
+
+        <a
+          href="${escapeHtml(data.adminUrl)}"
+          style="word-break:break-all;"
+        >
+          ${escapeHtml(data.adminUrl)}
+        </a>
+
+        <br><br>
+
+        <strong>Einladungs-Link:</strong><br>
+
+        <a
+          href="${escapeHtml(data.publicUrl)}"
+          style="word-break:break-all;"
+        >
+          ${escapeHtml(data.publicUrl)}
+        </a>
+
+        ${
+          data.organizerParticipantUrl
+            ? `
+              <br><br>
+
+              <strong>Dein persönlicher Teilnehmer-Link:</strong><br>
+
+              <a
+                href="${escapeHtml(data.organizerParticipantUrl)}"
+                style="word-break:break-all;"
+              >
+                ${escapeHtml(data.organizerParticipantUrl)}
+              </a>
+            `
+            : ""
+        }
+
+        <br><br>
+
+        <button
+          type="button"
+          id="openAdminButton"
+        >
+          👑 Organisator-Bereich öffnen
+        </button>
+
+      </div>
+    `;
+
+    document
+      .querySelector("#openAdminButton")
+      ?.addEventListener("click", () => {
+        window.location.href =
+          data.adminUrl;
+      });
+
+    button.textContent = "✅ Erfolgreich erstellt";
+
+  } catch (error) {
+
+    console.error(
+      "CREATE EVENT ERROR:",
+      error
+    );
+
+    status.style.display = "block";
+
+    status.innerHTML = `
+      <div style="
+        padding:16px;
+        border-radius:16px;
+        background:rgba(198,40,40,.12);
+        color:inherit;
+      ">
+        <strong>❌ Fehler beim Erstellen</strong>
+
+        <br><br>
+
+        ${escapeHtml(error.message)}
+
+        <br><br>
+
+        <small>
+          API:
+          ${escapeHtml(`${API}/events`)}
+        </small>
+      </div>
+    `;
+
+    button.disabled = false;
+    button.textContent =
+      "🎁 Wichtelrunde erstellen";
   }
 }
-async function adminLoad(){const r=await fetch(`${API}/admin/${encodeURIComponent(adminToken)}`);const d=await r.json();if(!r.ok)return alert(d.error||'Organisator-Link ungültig.');state.event=d}
-async function renderAdmin(){await adminLoad();const e=state.event;const started=e.status==='started';shell(`${header('Organisator') }<div class="card glass p-6 sm:p-8"><div class="flex items-start justify-between gap-4"><div><div class="text-4xl">🎄</div><h1 class="serif mt-3 text-4xl text-pine">${esc(e.name)}</h1><p class="mt-2 text-sm text-slate-500">${e.participants.length} Teilnehmer</p></div><span class="rounded-full px-3 py-1 text-xs font-bold ${started?'bg-gold/20 text-pine':'bg-pine/10 text-pine'}">${started?'Ausgelost':'Anmeldung offen'}</span></div><div class="mt-7 space-y-3">${e.participants.map(p=>`<div class="rounded-2xl bg-white px-4 py-4 ring-1 ring-black/5"><div class="flex items-center justify-between"><div><div class="font-bold text-pine">${esc(p.name)}</div><div class="mt-1 text-xs text-slate-500">${p.wish?esc(p.wish):'Kein Wunsch hinterlegt'} · ${p.exclusionsCount} Ausschlüsse</div></div><div class="text-xl">${p.joined?'✓':'…'}</div></div></div>`).join('')}</div><div class="mt-6 grid gap-3">${!started?button(`${icon('spark','w-4 h-4')} Wichteln starten`,'startDraw()'):button(`${icon('eye','w-4 h-4')} Zuordnungen anzeigen`,'showAssignments()',false)}${button(`${icon('copy','w-4 h-4')} Teilnehmer-Link kopieren`,'copyPublicLink()',false)}${localStorage.getItem('wichteln-organizer-participant-token')?button(`${icon('gift','w-4 h-4')} Mein persönlicher Wichtel-Link`,'copyOrganizerParticipantLink()',false):''}</div><div id="assignments" class="mt-4"></div></div>`)}
-async function startDraw(){if(!confirm('Auslosung jetzt starten? Danach können Teilnehmer ihre Angaben nicht mehr ändern.'))return;const r=await fetch(`${API}/admin/${encodeURIComponent(adminToken)}/start`,{method:'POST'});const d=await r.json();if(!r.ok)return alert(d.error||'Keine gültige Zuordnung gefunden.');renderAdmin()}
-async function showAssignments(){const r=await fetch(`${API}/admin/${encodeURIComponent(adminToken)}/assignments`);const d=await r.json();if(!r.ok)return alert(d.error||'Fehler');document.querySelector('#assignments').innerHTML=`<div class="rounded-3xl bg-pine p-5 text-white"><div class="text-xs font-bold uppercase tracking-wider text-gold">Vertraulich</div><div class="mt-3 space-y-2">${d.assignments.map(a=>`<div class="flex items-center justify-between rounded-xl bg-white/10 px-3 py-3 text-sm"><span>${esc(a.giverName)}</span><span>→</span><b>${esc(a.receiverName)}</b></div>`).join('')}</div></div>`}
-async function copyOrganizerParticipantLink(){const token=localStorage.getItem('wichteln-organizer-participant-token');if(!token)return alert('Kein persönlicher Teilnehmer-Link gespeichert.');await navigator.clipboard.writeText(location.origin+`?p=${token}`);alert('Dein persönlicher Wichtel-Link wurde kopiert!')}
-async function copyPublicLink(){await navigator.clipboard.writeText(location.origin+`?event=${eSlug()}`);alert('Teilnehmer-Link kopiert!')}
-function eSlug(){return state.event.slug}
-function renderHome(){shell(`${header('Deine Wichtelrunde')}<div class="card glass p-6 sm:p-8"><div class="mb-6 text-6xl">🎁</div><h1 class="serif text-4xl text-pine">Eine kleine Runde Wichtelglück.</h1><p class="mt-3 leading-7 text-slate-600">Erstelle eine Runde, verschicke nur einen Link und lass die App den Rest erledigen.</p><div class="mt-7 space-y-4"><input id="eventName" class="w-full rounded-2xl bg-white px-4 py-4 ring-1 ring-black/5" placeholder="Name der Wichtelrunde, z. B. Weihnachten 2026"/><input id="orgName" class="w-full rounded-2xl bg-white px-4 py-4 ring-1 ring-black/5" placeholder="Dein Name als Organisator"/><label class="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-black/5"><input id="self" type="checkbox" checked class="h-5 w-5 accent-pine"/><span class="text-sm font-semibold text-pine">Ich nehme selbst am Wichteln teil</span></label>${button(`${icon('spark','w-4 h-4')} Wichtelrunde erstellen`,'createEvent()')}</div></div>`)}
 
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
-if(adminToken) renderAdmin(); else if(participantToken) initParticipant(); else if(params.has('event') || (eventSlug && eventSlug!=='wichteln')) renderJoin(); else renderHome();
-window.nextName=nextName;window.renderIntro=renderIntro;window.renderWish=renderWish;window.saveWish=saveWish;window.joinNow=joinNow;window.copyLink=copyLink;window.editParticipant=editParticipant;window.saveEdit=saveEdit;window.renderResult=renderResult;window.startDraw=startDraw;window.showAssignments=showAssignments;window.copyPublicLink=copyPublicLink;window.copyOrganizerParticipantLink=copyOrganizerParticipantLink;window.createEvent=createEvent;
+// ------------------------------------------------------------
+// RUNDE LADEN
+// ------------------------------------------------------------
+
+async function loadEvent(slug) {
+  loading("Wichtelrunde wird geladen…");
+
+  try {
+    const data = await apiRequest(
+      `${API}/events/${encodeURIComponent(slug)}`
+    );
+
+    renderJoin(data);
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+// ------------------------------------------------------------
+// BEITRETEN
+// ------------------------------------------------------------
+
+function renderJoin(event) {
+  app.innerHTML = `
+    <div class="page">
+
+      <div class="hero">
+        <div class="hero-icon">🎁</div>
+
+        <h1>${escapeHtml(event.name)}</h1>
+
+        <p>
+          Du wurdest zum Wichteln eingeladen.
+        </p>
+      </div>
+
+      <div class="card">
+
+        <label for="joinName">
+          Dein Name
+        </label>
+
+        <input
+          id="joinName"
+          type="text"
+          placeholder="Wie heißt du?"
+          autocomplete="name"
+        />
+
+        <label for="joinWish">
+          Wunsch / Geschenkidee
+          <span class="muted">(optional)</span>
+        </label>
+
+        <input
+          id="joinWish"
+          type="text"
+          placeholder="z. B. etwas zum Kochen"
+          autocomplete="off"
+        />
+
+        <button
+          id="joinButton"
+          type="button"
+        >
+          🎄 Teilnehmen
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  document
+    .querySelector("#joinButton")
+    .addEventListener("click", async () => {
+
+      const button =
+        document.querySelector("#joinButton");
+
+      const name =
+        document.querySelector("#joinName")
+          .value
+          .trim();
+
+      const wish =
+        document.querySelector("#joinWish")
+          .value
+          .trim();
+
+      if (!name) {
+        alert("Bitte deinen Namen eingeben.");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent =
+        "⏳ Wird gespeichert…";
+
+      try {
+
+        const data = await apiRequest(
+          `${API}/events/${encodeURIComponent(event.slug)}/join`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              name,
+              wish,
+              exclusions: [],
+            }),
+          }
+        );
+
+        if (!data.token) {
+          throw new Error(
+            "Die Teilnahme wurde gespeichert, aber es wurde kein persönlicher Link zurückgegeben."
+          );
+        }
+
+        save(
+          "wichteln-participant-token",
+          data.token
+        );
+
+        window.location.href =
+          `?p=${encodeURIComponent(data.token)}`;
+
+      } catch (error) {
+
+        alert(
+          "Teilnahme konnte nicht gespeichert werden.\n\n" +
+          error.message
+        );
+
+        button.disabled = false;
+        button.textContent =
+          "🎄 Teilnehmen";
+      }
+    });
+}
+
+// ------------------------------------------------------------
+// PERSÖNLICHEN LINK LADEN
+// ------------------------------------------------------------
+
+async function loadParticipant(token) {
+  loading("Deine Wichtelrunde wird geladen…");
+
+  try {
+
+    const data = await apiRequest(
+      `${API}/p/${encodeURIComponent(token)}`
+    );
+
+    renderParticipant(data, token);
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+// ------------------------------------------------------------
+// TEILNEHMERANSICHT
+// ------------------------------------------------------------
+
+function renderParticipant(data, token) {
+
+  if (data.status === "started" && data.assignment) {
+
+    renderAssignment(
+      data,
+      token
+    );
+
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="page">
+
+      <div class="hero">
+        <div class="hero-icon">🎄</div>
+
+        <h1>Hallo ${escapeHtml(data.participant.name)}!</h1>
+
+        <p>
+          Du bist dabei. 🎁
+        </p>
+      </div>
+
+      <div class="card">
+
+        <h2>Deine Angaben</h2>
+
+        <label for="editName">
+          Name
+        </label>
+
+        <input
+          id="editName"
+          value="${escapeHtml(data.participant.name)}"
+        />
+
+        <label for="editWish">
+          Wunsch / Geschenkidee
+        </label>
+
+        <input
+          id="editWish"
+          value="${escapeHtml(data.participant.wish || "")}"
+          placeholder="Optional"
+        />
+
+        <button
+          id="saveParticipant"
+          type="button"
+        >
+          💾 Änderungen speichern
+        </button>
+
+        <div
+          id="participantStatus"
+          style="margin-top:16px;"
+        ></div>
+
+      </div>
+
+    </div>
+  `;
+
+  document
+    .querySelector("#saveParticipant")
+    .addEventListener("click", async () => {
+
+      const button =
+        document.querySelector("#saveParticipant");
+
+      const name =
+        document.querySelector("#editName")
+          .value
+          .trim();
+
+      const wish =
+        document.querySelector("#editWish")
+          .value
+          .trim();
+
+      if (!name) {
+        alert("Bitte deinen Namen eingeben.");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent =
+        "⏳ Speichern…";
+
+      try {
+
+        await apiRequest(
+          `${API}/p/${encodeURIComponent(token)}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              name,
+              wish,
+              exclusions:
+                data.participant.exclusions || [],
+            }),
+          }
+        );
+
+        document.querySelector(
+          "#participantStatus"
+        ).innerHTML = `
+          <div style="
+            padding:12px;
+            border-radius:12px;
+            background:rgba(46,125,50,.12);
+          ">
+            ✅ Änderungen gespeichert.
+          </div>
+        `;
+
+      } catch (error) {
+
+        alert(
+          "Speichern fehlgeschlagen.\n\n" +
+          error.message
+        );
+
+      } finally {
+
+        button.disabled = false;
+        button.textContent =
+          "💾 Änderungen speichern";
+      }
+    });
+}
+
+// ------------------------------------------------------------
+// ZUORDNUNG
+// ------------------------------------------------------------
+
+function renderAssignment(data, token) {
+
+  app.innerHTML = `
+    <div class="page">
+
+      <div class="hero">
+        <div class="hero-icon">🎁</div>
+
+        <h1>Dein Wichtel</h1>
+
+        <p>
+          Die Auslosung ist erfolgt.
+        </p>
+      </div>
+
+      <div class="card center">
+
+        <div style="font-size:64px;">
+          🎄
+        </div>
+
+        <h2>
+          Du beschenkst
+        </h2>
+
+        <div style="
+          font-size:28px;
+          font-weight:700;
+          margin:20px 0;
+        ">
+          ${escapeHtml(
+            data.assignment.receiverName
+          )}
+        </div>
+
+        ${
+          data.assignment.receiverWish
+            ? `
+              <p>
+                💡 Wunsch:
+                <strong>
+                  ${escapeHtml(
+                    data.assignment.receiverWish
+                  )}
+                </strong>
+              </p>
+            `
+            : ""
+        }
+
+      </div>
+
+    </div>
+  `;
+}
+
+// ------------------------------------------------------------
+// ADMIN
+// ------------------------------------------------------------
+
+async function loadAdmin(token) {
+
+  loading("Organisator-Bereich wird geladen…");
+
+  try {
+
+    const data = await apiRequest(
+      `${API}/admin/${encodeURIComponent(token)}`
+    );
+
+    renderAdmin(data, token);
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+function renderAdmin(data, token) {
+
+  app.innerHTML = `
+    <div class="page">
+
+      <div class="hero">
+        <div class="hero-icon">👑</div>
+
+        <h1>${escapeHtml(data.name)}</h1>
+
+        <p>
+          Organisator-Bereich
+        </p>
+      </div>
+
+      <div class="card">
+
+        <h2>
+          Teilnehmer
+        </h2>
+
+        <p class="muted">
+          ${data.participants.length}
+          Teilnehmer
+        </p>
+
+        <div>
+          ${
+            data.participants.length
+              ? data.participants
+                  .map(
+                    (p) => `
+                      <div style="
+                        padding:12px 0;
+                        border-bottom:1px solid rgba(255,255,255,.08);
+                      ">
+                        <strong>
+                          ${escapeHtml(p.name)}
+                        </strong>
+
+                        ${
+                          p.wish
+                            ? `
+                              <div class="muted">
+                                💡 ${escapeHtml(p.wish)}
+                              </div>
+                            `
+                            : ""
+                        }
+                      </div>
+                    `
+                  )
+                  .join("")
+              : `
+                <p class="muted">
+                  Noch keine Teilnehmer.
+                </p>
+              `
+          }
+        </div>
+
+        ${
+          data.status === "open"
+            ? `
+              <button
+                id="startDraw"
+                type="button"
+                style="margin-top:20px;"
+              >
+                🎲 Auslosung starten
+              </button>
+            `
+            : `
+              <div style="
+                margin-top:20px;
+                padding:14px;
+                border-radius:14px;
+                background:rgba(46,125,50,.12);
+              ">
+                ✅ Die Auslosung wurde gestartet.
+              </div>
+            `
+        }
+
+      </div>
+
+    </div>
+  `;
+
+  document
+    .querySelector("#startDraw")
+    ?.addEventListener("click", async () => {
+
+      if (
+        !confirm(
+          "Möchtest du die Auslosung wirklich starten?\n\nDanach können Teilnehmer ihre Daten nicht mehr ändern."
+        )
+      ) {
+        return;
+      }
+
+      const button =
+        document.querySelector("#startDraw");
+
+      button.disabled = true;
+      button.textContent =
+        "⏳ Auslosung läuft…";
+
+      try {
+
+        await apiRequest(
+          `${API}/admin/${encodeURIComponent(token)}/start`,
+          {
+            method: "POST",
+            body: JSON.stringify({}),
+          }
+        );
+
+        await loadAdmin(token);
+
+      } catch (error) {
+
+        alert(
+          "Auslosung konnte nicht gestartet werden.\n\n" +
+          error.message
+        );
+
+        button.disabled = false;
+        button.textContent =
+          "🎲 Auslosung starten";
+      }
+    });
+}
+
+// ------------------------------------------------------------
+// ROUTER
+// ------------------------------------------------------------
+
+async function startApp() {
+
+  console.log("=================================");
+  console.log("🎄 WICHTEL APP START");
+  console.log("API:", API);
+  console.log("URL:", window.location.href);
+  console.log("=================================");
+
+  const adminToken =
+    getQuery("admin");
+
+  const participantToken =
+    getQuery("p");
+
+  const eventSlug =
+    getQuery("event");
+
+  try {
+
+    if (adminToken) {
+      await loadAdmin(adminToken);
+      return;
+    }
+
+    if (participantToken) {
+      await loadParticipant(participantToken);
+      return;
+    }
+
+    if (eventSlug) {
+      await loadEvent(eventSlug);
+      return;
+    }
+
+    renderHome();
+
+  } catch (error) {
+
+    showError(error);
+  }
+}
+
+// ------------------------------------------------------------
+// GLOBAL
+// ------------------------------------------------------------
+
+window.createEvent = createEvent;
+window.startApp = startApp;
+
+// Start
+startApp();
