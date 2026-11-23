@@ -26,11 +26,11 @@ const state = {
 
   joined: null,
 
-  event: null,
-
-  loading: false
+  event: null
 
 };
+
+let revealTimer = null;
 
 // ============================================================
 
@@ -150,7 +150,7 @@ async function getJson(url, options = {}) {
 
       ok: false,
 
-      error: 'Der Server hat keine gültige Antwort geliefert.'
+      error: 'Ungültige Serverantwort.'
 
     };
 
@@ -238,15 +238,17 @@ function header(sub = '') {
 
 }
 
-function button(label, onclick, primary = true) {
+function button(label, action, primary = true, id = '') {
 
   return `
 
     <button
 
+      ${id ? `id="${id}"` : ''}
+
       type="button"
 
-      onclick="${onclick}"
+      data-action="${action}"
 
       class="btn inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-bold ${
 
@@ -299,6 +301,120 @@ function progress(n) {
     </div>
 
   `;
+
+}
+
+// ============================================================
+
+// EVENTS – ZENTRALER EVENT HANDLER
+
+// ============================================================
+
+function bindActions() {
+
+  document.querySelectorAll('[data-action]').forEach(button => {
+
+    button.addEventListener('click', async () => {
+
+      const action = button.dataset.action;
+
+      switch (action) {
+
+        case 'nextName':
+
+          nextName();
+
+          break;
+
+        case 'renderIntro':
+
+          renderIntro();
+
+          break;
+
+        case 'renderWish':
+
+          renderWish();
+
+          break;
+
+        case 'saveWish':
+
+          await saveWish();
+
+          break;
+
+        case 'joinNow':
+
+          await joinNow();
+
+          break;
+
+        case 'copyLink':
+
+          await copyLink();
+
+          break;
+
+        case 'editParticipant':
+
+          await editParticipant();
+
+          break;
+
+        case 'saveEdit':
+
+          await saveEdit();
+
+          break;
+
+        case 'renderResult':
+
+          renderResult();
+
+          break;
+
+        case 'skipReveal':
+
+          skipReveal();
+
+          break;
+
+        case 'createEvent':
+
+          await createEvent();
+
+          break;
+
+        case 'startDraw':
+
+          await startDraw();
+
+          break;
+
+        case 'showAssignments':
+
+          await showAssignments();
+
+          break;
+
+        case 'copyPublicLink':
+
+          await copyPublicLink();
+
+          break;
+
+        case 'copyOrganizerParticipantLink':
+
+          await copyOrganizerParticipantLink();
+
+          break;
+
+      }
+
+    });
+
+  });
 
 }
 
@@ -368,7 +484,7 @@ function renderJoin() {
 
             `${icon('arrow', 'w-4 h-4')} Weiter`,
 
-            'nextName()'
+            'nextName'
 
           )}
 
@@ -380,17 +496,21 @@ function renderJoin() {
 
   `);
 
+  bindActions();
+
 }
 
 function nextName() {
 
-  const input = document.querySelector('#name');
+  const value =
 
-  const value = input?.value.trim() || '';
+    document.querySelector('#name')?.value.trim() || '';
 
   if (!value) {
 
-    return alert('Bitte gib deinen Namen ein.');
+    alert('Bitte gib deinen Namen ein.');
+
+    return;
 
   }
 
@@ -454,13 +574,15 @@ function renderIntro() {
 
         `${icon('arrow', 'w-4 h-4')} Weiter`,
 
-        'renderWish()'
+        'renderWish'
 
       )}
 
     </div>
 
   `);
+
+  bindActions();
 
 }
 
@@ -522,7 +644,7 @@ function renderWish() {
 
           'Zurück',
 
-          'renderIntro()',
+          'renderIntro',
 
           false
 
@@ -532,7 +654,7 @@ function renderWish() {
 
           `${icon('arrow', 'w-4 h-4')} Weiter`,
 
-          'saveWish()'
+          'saveWish'
 
         )}
 
@@ -542,17 +664,21 @@ function renderWish() {
 
   `);
 
+  bindActions();
+
 }
 
 async function saveWish() {
 
-  const textarea = document.querySelector('#wish');
+  state.wish =
 
-  state.wish = textarea?.value.trim() || '';
+    document.querySelector('#wish')?.value.trim() || '';
 
-  const loaded = await loadParticipants();
+  const success =
 
-  if (!loaded) {
+    await loadParticipants();
+
+  if (!success) {
 
     return;
 
@@ -572,7 +698,7 @@ async function loadParticipants() {
 
   if (!eventSlug) {
 
-    alert('Die Wichtelrunde konnte nicht gefunden werden.');
+    alert('Die Wichtelrunde wurde nicht gefunden.');
 
     return false;
 
@@ -580,11 +706,13 @@ async function loadParticipants() {
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/events/${encodeURIComponent(eventSlug)}`
+      await getJson(
 
-    );
+        `${API}/events/${encodeURIComponent(eventSlug)}`
+
+      );
 
     if (!response.ok) {
 
@@ -602,7 +730,9 @@ async function loadParticipants() {
 
     state.event = data;
 
-    state.participants = data.participants || [];
+    state.participants =
+
+      data.participants || [];
 
     return true;
 
@@ -610,7 +740,7 @@ async function loadParticipants() {
 
     alert(
 
-      `Die Wichtelrunde konnte nicht geladen werden.\n\n${error.message}`
+      `Fehler beim Laden der Wichtelrunde.\n\n${error.message}`
 
     );
 
@@ -627,10 +757,6 @@ async function loadParticipants() {
 // ============================================================
 
 function renderExclusions() {
-
-  const availableParticipants =
-
-    state.participants || [];
 
   shell(`
 
@@ -660,9 +786,9 @@ function renderExclusions() {
 
         ${
 
-          availableParticipants.length
+          state.participants.length
 
-            ? availableParticipants
+            ? state.participants
 
                 .map(
 
@@ -684,8 +810,6 @@ function renderExclusions() {
 
                         type="checkbox"
 
-                        class="h-5 w-5 accent-pine"
-
                         value="${esc(p.id)}"
 
                         ${
@@ -697,6 +821,8 @@ function renderExclusions() {
                             : ''
 
                         }
+
+                        class="h-5 w-5 accent-pine"
 
                       />
 
@@ -710,15 +836,15 @@ function renderExclusions() {
 
             : `
 
-                <div class="rounded-2xl bg-cream p-4 text-sm text-slate-600">
+              <div class="rounded-2xl bg-cream p-4 text-sm text-slate-600">
 
-                  Weitere Teilnehmer erscheinen hier,
+                Weitere Teilnehmer erscheinen hier,
 
-                  sobald sie sich angemeldet haben.
+                sobald sie sich angemeldet haben.
 
-                </div>
+              </div>
 
-              `
+            `
 
         }
 
@@ -730,7 +856,7 @@ function renderExclusions() {
 
           'Zurück',
 
-          'renderWish()',
+          'renderWish',
 
           false
 
@@ -740,7 +866,7 @@ function renderExclusions() {
 
           `${icon('check', 'w-4 h-4')} Teilnahme bestätigen`,
 
-          'joinNow()'
+          'joinNow'
 
         )}
 
@@ -749,6 +875,8 @@ function renderExclusions() {
     </div>
 
   `);
+
+  bindActions();
 
 }
 
@@ -764,7 +892,7 @@ async function joinNow() {
 
     ...document.querySelectorAll(
 
-      '#app input[type=checkbox]:checked'
+      '#app input[type="checkbox"]:checked'
 
     )
 
@@ -772,43 +900,47 @@ async function joinNow() {
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/events/${encodeURIComponent(eventSlug)}/join`,
+      await getJson(
 
-      {
+        `${API}/events/${encodeURIComponent(eventSlug)}/join`,
 
-        method: 'POST',
+        {
 
-        headers: {
+          method: 'POST',
 
-          'content-type': 'application/json'
+          headers: {
 
-        },
+            'content-type': 'application/json'
 
-        body: JSON.stringify({
+          },
 
-          name: state.name,
+          body: JSON.stringify({
 
-          wish: state.wish,
+            name: state.name,
 
-          exclusions: state.exclusions
+            wish: state.wish,
 
-        })
+            exclusions: state.exclusions
 
-      }
+          })
 
-    );
+        }
+
+      );
 
     if (!response.ok) {
 
-      return alert(
+      alert(
 
         data.error ||
 
         'Die Teilnahme konnte nicht gespeichert werden.'
 
       );
+
+      return;
 
     }
 
@@ -940,7 +1072,7 @@ function renderJoined() {
 
           `${icon('edit', 'w-4 h-4')} Angaben bearbeiten`,
 
-          'editParticipant()',
+          'editParticipant',
 
           false
 
@@ -954,7 +1086,7 @@ function renderJoined() {
 
           `${icon('copy', 'w-4 h-4')} Persönlichen Link kopieren`,
 
-          'copyLink()'
+          'copyLink'
 
         )}
 
@@ -971,6 +1103,8 @@ function renderJoined() {
     </div>
 
   `);
+
+  bindActions();
 
 }
 
@@ -996,7 +1130,7 @@ async function copyText(text, successMessage) {
 
       alert(successMessage);
 
-      return true;
+      return;
 
     }
 
@@ -1026,21 +1160,19 @@ async function copyText(text, successMessage) {
 
       alert(successMessage);
 
-      return true;
+      return;
 
     }
 
-    throw new Error('Kopieren wurde vom Browser blockiert.');
+    throw new Error('Kopieren fehlgeschlagen.');
 
-  } catch (error) {
+  } catch {
 
     alert(
 
       `Der Link konnte nicht automatisch kopiert werden.\n\n${text}`
 
     );
-
-    return false;
 
   }
 
@@ -1068,7 +1200,7 @@ async function loadParticipant(token) {
 
   if (!token) {
 
-    alert('Kein persönlicher Teilnehmer-Link vorhanden.');
+    alert('Kein persönlicher Link vorhanden.');
 
     return false;
 
@@ -1076,11 +1208,13 @@ async function loadParticipant(token) {
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/p/${encodeURIComponent(token)}`
+      await getJson(
 
-    );
+        `${API}/p/${encodeURIComponent(token)}`
+
+      );
 
     if (!response.ok) {
 
@@ -1088,7 +1222,7 @@ async function loadParticipant(token) {
 
         data.error ||
 
-        'Persönlicher Link nicht gefunden.'
+        'Persönlicher Link ungültig.'
 
       );
 
@@ -1132,11 +1266,11 @@ async function loadParticipant(token) {
 
 async function editParticipant() {
 
-  const loaded =
+  const success =
 
     await loadParticipant(participantToken);
 
-  if (!loaded) {
+  if (!success) {
 
     return;
 
@@ -1148,7 +1282,7 @@ async function editParticipant() {
 
 // ============================================================
 
-// PERSÖNLICHE DATEN BEARBEITEN
+// DATEN BEARBEITEN
 
 // ============================================================
 
@@ -1248,8 +1382,6 @@ function renderEdit() {
 
         value="${esc(state.name)}"
 
-        autocomplete="name"
-
         class="mt-2 w-full rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5 disabled:opacity-60"
 
       />
@@ -1286,7 +1418,11 @@ function renderEdit() {
 
             state.participants
 
-              .filter(p => p.id !== currentId)
+              .filter(
+
+                p => p.id !== currentId
+
+              )
 
               .map(
 
@@ -1310,11 +1446,19 @@ function renderEdit() {
 
                     <input
 
-                      ${locked ? 'disabled' : ''}
-
                       type="checkbox"
 
                       value="${esc(p.id)}"
+
+                      ${
+
+                        locked
+
+                          ? 'disabled'
+
+                          : ''
+
+                      }
 
                       ${
 
@@ -1356,7 +1500,7 @@ function renderEdit() {
 
                 'Zurück zur Zuordnung',
 
-                'renderResult()',
+                'renderResult',
 
                 false
 
@@ -1374,7 +1518,7 @@ function renderEdit() {
 
                 `${icon('check', 'w-4 h-4')} Änderungen speichern`,
 
-                'saveEdit()'
+                'saveEdit'
 
               )}
 
@@ -1387,6 +1531,8 @@ function renderEdit() {
     </div>
 
   `);
+
+  bindActions();
 
 }
 
@@ -1426,7 +1572,9 @@ async function saveEdit() {
 
   if (!name) {
 
-    return alert('Bitte gib deinen Namen ein.');
+    alert('Bitte gib deinen Namen ein.');
+
+    return;
 
   }
 
@@ -1434,7 +1582,7 @@ async function saveEdit() {
 
     ...document.querySelectorAll(
 
-      '#app input[type=checkbox]:checked'
+      '#app input[type="checkbox"]:checked'
 
     )
 
@@ -1442,37 +1590,39 @@ async function saveEdit() {
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/p/${encodeURIComponent(participantToken)}`,
+      await getJson(
 
-      {
+        `${API}/p/${encodeURIComponent(participantToken)}`,
 
-        method: 'PUT',
+        {
 
-        headers: {
+          method: 'PUT',
 
-          'content-type': 'application/json'
+          headers: {
 
-        },
+            'content-type': 'application/json'
 
-        body: JSON.stringify({
+          },
 
-          name,
+          body: JSON.stringify({
 
-          wish,
+            name,
 
-          exclusions
+            wish,
 
-        })
+            exclusions
 
-      }
+          })
 
-    );
+        }
+
+      );
 
     if (!response.ok) {
 
-      return alert(
+      alert(
 
         data.error ||
 
@@ -1480,19 +1630,21 @@ async function saveEdit() {
 
       );
 
+      return;
+
     }
 
-    const loaded =
+    const success =
 
       await loadParticipant(participantToken);
 
-    if (!loaded) {
+    if (!success) {
 
       return;
 
     }
 
-    renderResult();
+    renderEdit();
 
   } catch (error) {
 
@@ -1513,6 +1665,12 @@ async function saveEdit() {
 // ============================================================
 
 function wichtelAnimation() {
+
+  if (revealTimer) {
+
+    clearTimeout(revealTimer);
+
+  }
 
   shell(`
 
@@ -1574,19 +1732,19 @@ function wichtelAnimation() {
 
         </p>
 
-        <button
+        <div class="mt-5">
 
-          type="button"
+          ${button(
 
-          onclick="skipReveal()"
+            'Überspringen',
 
-          class="mt-5 text-xs font-semibold text-slate-400 underline underline-offset-4"
+            'skipReveal',
 
-        >
+            false
 
-          Überspringen
+          )}
 
-        </button>
+        </div>
 
       </div>
 
@@ -1594,17 +1752,25 @@ function wichtelAnimation() {
 
   `);
 
+  bindActions();
+
   requestAnimationFrame(() => {
 
     document
 
       .querySelector('#bar')
 
-      ?.style.setProperty('width', '100%');
+      ?.style.setProperty(
+
+        'width',
+
+        '100%'
+
+      );
 
   });
 
-  window.__wichtelRevealTimer =
+  revealTimer =
 
     setTimeout(() => {
 
@@ -1616,11 +1782,11 @@ function wichtelAnimation() {
 
 function skipReveal() {
 
-  if (window.__wichtelRevealTimer) {
+  if (revealTimer) {
 
-    clearTimeout(window.__wichtelRevealTimer);
+    clearTimeout(revealTimer);
 
-    window.__wichtelRevealTimer = null;
+    revealTimer = null;
 
   }
 
@@ -1712,6 +1878,8 @@ function renderResult() {
 
   `);
 
+  bindActions();
+
 }
 
 // ============================================================
@@ -1722,21 +1890,23 @@ function renderResult() {
 
 async function initParticipant() {
 
-  const loaded =
+  const success =
 
     await loadParticipant(participantToken);
 
-  if (!loaded) {
+  if (!success) {
 
     return;
 
   }
 
-  const started =
+  if (
 
-    state.joined.status === 'started';
+    state.joined.status === 'started' &&
 
-  if (started && state.joined.assignment) {
+    state.joined.assignment
+
+  ) {
 
     const key =
 
@@ -1792,7 +1962,7 @@ async function createEvent() {
 
       .trim() || '';
 
-  const self =
+  const joinSelf =
 
     document
 
@@ -1802,57 +1972,65 @@ async function createEvent() {
 
   if (!name) {
 
-    return alert(
+    alert(
 
       'Bitte gib einen Namen für die Wichtelrunde ein.'
 
     );
 
+    return;
+
   }
 
-  if (self && !organizer) {
+  if (joinSelf && !organizer) {
 
-    return alert(
+    alert(
 
       'Bitte gib deinen Namen als Organisator ein.'
 
     );
 
+    return;
+
   }
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/events`,
+      await getJson(
 
-      {
+        `${API}/events`,
 
-        method: 'POST',
+        {
 
-        headers: {
+          method: 'POST',
 
-          'content-type': 'application/json'
+          headers: {
 
-        },
+            'content-type':
 
-        body: JSON.stringify({
+              'application/json'
 
-          name,
+          },
 
-          organizer,
+          body: JSON.stringify({
 
-          joinSelf: self
+            name,
 
-        })
+            organizer,
 
-      }
+            joinSelf
 
-    );
+          })
+
+        }
+
+      );
 
     if (!response.ok) {
 
-      return alert(
+      alert(
 
         `Serverfehler (${response.status}): ${
 
@@ -1864,15 +2042,19 @@ async function createEvent() {
 
       );
 
+      return;
+
     }
 
     if (!data.adminToken) {
 
-      return alert(
+      alert(
 
-        'Die Wichtelrunde wurde erstellt, aber kein Organisator-Link wurde zurückgegeben.'
+        'Die Runde wurde erstellt, aber kein Organisator-Link wurde zurückgegeben.'
 
       );
+
+      return;
 
     }
 
@@ -1936,11 +2118,13 @@ async function adminLoad() {
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/admin/${encodeURIComponent(adminToken)}`
+      await getJson(
 
-    );
+        `${API}/admin/${encodeURIComponent(adminToken)}`
+
+      );
 
     if (!response.ok) {
 
@@ -1976,21 +2160,23 @@ async function adminLoad() {
 
 async function renderAdmin() {
 
-  const loaded =
+  const success =
 
     await adminLoad();
 
-  if (!loaded) {
+  if (!success) {
 
     return;
 
   }
 
-  const e = state.event;
+  const event =
+
+    state.event;
 
   const started =
 
-    e.status === 'started';
+    event.status === 'started';
 
   shell(`
 
@@ -2010,13 +2196,13 @@ async function renderAdmin() {
 
           <h1 class="serif mt-3 text-4xl text-pine">
 
-            ${esc(e.name)}
+            ${esc(event.name)}
 
           </h1>
 
           <p class="mt-2 text-sm text-slate-500">
 
-            ${e.participants.length} Teilnehmer
+            ${event.participants.length} Teilnehmer
 
           </p>
 
@@ -2054,13 +2240,13 @@ async function renderAdmin() {
 
         ${
 
-          e.participants.length
+          event.participants.length
 
-            ? e.participants
+            ? event.participants
 
                 .map(
 
-                  p => `
+                  participant => `
 
                     <div class="rounded-2xl bg-white px-4 py-4 ring-1 ring-black/5">
 
@@ -2070,7 +2256,7 @@ async function renderAdmin() {
 
                           <div class="font-bold text-pine">
 
-                            ${esc(p.name)}
+                            ${esc(participant.name)}
 
                           </div>
 
@@ -2078,9 +2264,9 @@ async function renderAdmin() {
 
                             ${
 
-                              p.wish
+                              participant.wish
 
-                                ? esc(p.wish)
+                                ? esc(participant.wish)
 
                                 : 'Kein Wunsch hinterlegt'
 
@@ -2088,7 +2274,7 @@ async function renderAdmin() {
 
                             ·
 
-                            ${p.exclusionsCount}
+                            ${participant.exclusionsCount}
 
                             Ausschlüsse
 
@@ -2098,7 +2284,7 @@ async function renderAdmin() {
 
                         <div class="ml-3 text-xl">
 
-                          ${p.joined ? '✓' : '…'}
+                          ${participant.joined ? '✓' : '…'}
 
                         </div>
 
@@ -2142,7 +2328,7 @@ async function renderAdmin() {
 
                 )} Wichteln starten`,
 
-                'startDraw()'
+                'startDraw'
 
               )
 
@@ -2156,7 +2342,7 @@ async function renderAdmin() {
 
                 )} Zuordnungen anzeigen`,
 
-                'showAssignments()',
+                'showAssignments',
 
                 false
 
@@ -2174,7 +2360,7 @@ async function renderAdmin() {
 
           )} Teilnehmer-Link kopieren`,
 
-          'copyPublicLink()',
+          'copyPublicLink',
 
           false
 
@@ -2198,7 +2384,7 @@ async function renderAdmin() {
 
                 )} Mein persönlicher Wichtel-Link`,
 
-                'copyOrganizerParticipantLink()',
+                'copyOrganizerParticipantLink',
 
                 false
 
@@ -2222,6 +2408,8 @@ async function renderAdmin() {
 
   `);
 
+  bindActions();
+
 }
 
 // ============================================================
@@ -2232,15 +2420,15 @@ async function renderAdmin() {
 
 async function startDraw() {
 
-  const confirmed =
+  if (
 
-    confirm(
+    !confirm(
 
       'Auslosung jetzt starten?\n\nDanach können Teilnehmer ihre Angaben nicht mehr ändern.'
 
-    );
+    )
 
-  if (!confirmed) {
+  ) {
 
     return;
 
@@ -2248,27 +2436,31 @@ async function startDraw() {
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/admin/${encodeURIComponent(adminToken)}/start`,
+      await getJson(
 
-      {
+        `${API}/admin/${encodeURIComponent(adminToken)}/start`,
 
-        method: 'POST'
+        {
 
-      }
+          method: 'POST'
 
-    );
+        }
+
+      );
 
     if (!response.ok) {
 
-      return alert(
+      alert(
 
         data.error ||
 
         'Keine gültige Zuordnung gefunden.'
 
       );
+
+      return;
 
     }
 
@@ -2294,15 +2486,15 @@ async function startDraw() {
 
 async function showAssignments() {
 
-  const confirmed =
+  if (
 
-    confirm(
+    !confirm(
 
       'Möchtest du wirklich alle Wichtel-Zuordnungen anzeigen?\n\nDiese Ansicht ist vertraulich.'
 
-    );
+    )
 
-  if (!confirmed) {
+  ) {
 
     return;
 
@@ -2310,21 +2502,25 @@ async function showAssignments() {
 
   try {
 
-    const { response, data } = await getJson(
+    const { response, data } =
 
-      `${API}/admin/${encodeURIComponent(adminToken)}/assignments`
+      await getJson(
 
-    );
+        `${API}/admin/${encodeURIComponent(adminToken)}/assignments`
+
+      );
 
     if (!response.ok) {
 
-      return alert(
+      alert(
 
         data.error ||
 
-        'Die Zuordnungen konnten nicht geladen werden.'
+        'Fehler beim Laden der Zuordnungen.'
 
       );
+
+      return;
 
     }
 
@@ -2358,13 +2554,13 @@ async function showAssignments() {
 
                   .map(
 
-                    a => `
+                    assignment => `
 
                       <div class="flex items-center justify-between gap-3 rounded-xl bg-white/10 px-3 py-3 text-sm">
 
                         <span class="min-w-0 break-words">
 
-                          ${esc(a.giverName)}
+                          ${esc(assignment.giverName)}
 
                         </span>
 
@@ -2376,7 +2572,7 @@ async function showAssignments() {
 
                         <b class="min-w-0 break-words text-right">
 
-                          ${esc(a.receiverName)}
+                          ${esc(assignment.receiverName)}
 
                         </b>
 
@@ -2436,11 +2632,13 @@ async function copyOrganizerParticipantLink() {
 
   if (!token) {
 
-    return alert(
+    alert(
 
       'Kein persönlicher Teilnehmer-Link gespeichert.'
 
     );
+
+    return;
 
   }
 
@@ -2460,11 +2658,13 @@ async function copyPublicLink() {
 
   if (!state.event?.slug) {
 
-    return alert(
+    alert(
 
       'Der Teilnehmer-Link ist momentan nicht verfügbar.'
 
     );
+
+    return;
 
   }
 
@@ -2572,7 +2772,7 @@ function renderHome() {
 
           )} Wichtelrunde erstellen`,
 
-          'createEvent()'
+          'createEvent'
 
         )}
 
@@ -2581,6 +2781,8 @@ function renderHome() {
     </div>
 
   `);
+
+  bindActions();
 
 }
 
@@ -2635,41 +2837,3 @@ if (adminToken) {
   renderHome();
 
 }
-
-// ============================================================
-
-// GLOBALE FUNKTIONEN
-
-// ============================================================
-
-window.nextName = nextName;
-
-window.renderIntro = renderIntro;
-
-window.renderWish = renderWish;
-
-window.saveWish = saveWish;
-
-window.joinNow = joinNow;
-
-window.copyLink = copyLink;
-
-window.editParticipant = editParticipant;
-
-window.saveEdit = saveEdit;
-
-window.renderResult = renderResult;
-
-window.skipReveal = skipReveal;
-
-window.startDraw = startDraw;
-
-window.showAssignments = showAssignments;
-
-window.copyPublicLink = copyPublicLink;
-
-window.copyOrganizerParticipantLink =
-
-  copyOrganizerParticipantLink;
-
-window.createEvent = createEvent;
