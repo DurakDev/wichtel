@@ -1,19 +1,933 @@
-const json = (data,status=200,headers={}) => new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*',...headers}});
-const token=()=>{const b=new Uint8Array(24);crypto.getRandomValues(b);return [...b].map(x=>x.toString(16).padStart(2,'0')).join('')};
-const slug=()=>{const s=token();return s.slice(0,8)};
-async function body(r){try{return await r.json()}catch{return {}}}
-async function getEvent(env,slug){return env.DB.prepare('SELECT * FROM events WHERE slug=?').bind(slug).first()}
-async function participants(env,eventId){return env.DB.prepare('SELECT id,name,wish FROM participants WHERE event_id=? ORDER BY created_at').bind(eventId).all()}
-function assignment(participants, exclusions){const ids=participants.map(p=>p.id);const allowed=new Map(ids.map(id=>[id,ids.filter(x=>x!==id && !(exclusions.get(id)||[]).includes(x))]));for(const [id,a] of allowed) a.sort(()=>Math.random()-.5);const order=[...ids].sort((a,b)=>allowed.get(a).length-allowed.get(b).length);const used=new Set(), out=new Map();function bt(i){if(i===order.length)return true;const giver=order[i];const opts=[...allowed.get(giver)].filter(x=>!used.has(x)).sort(()=>Math.random()-.5);for(const receiver of opts){out.set(giver,receiver);used.add(receiver);if(bt(i+1))return true;used.delete(receiver);out.delete(giver)}return false}return bt(0)?out:null}
-export default {async fetch(req,env){const u=new URL(req.url);const path=u.pathname.split('/').filter(Boolean);if(req.method==='OPTIONS')return new Response(null,{headers:{'access-control-allow-origin':'*','access-control-allow-methods':'GET,POST,PUT,OPTIONS','access-control-allow-headers':'content-type'}});
-try{
-if(req.method==='POST'&&path[0]==='api'&&path[1]==='events'){const b=await body(req),s=slug(),admin=token();const eventId=crypto.randomUUID();await env.DB.prepare('INSERT INTO events(id,slug,name,admin_token,status,created_at) VALUES(?,?,?,?,?,?)').bind(eventId,s,b.name,admin,'open',Date.now()).run();let organizerParticipantToken=null;if(b.joinSelf&&b.organizer){const pt=token();organizerParticipantToken=pt;await env.DB.prepare('INSERT INTO participants(id,event_id,name,wish,personal_token,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),eventId,b.organizer,'',pt,Date.now()).run()}return json({slug:s,adminToken:admin,organizerParticipantToken,publicUrl:`${u.origin}/?event=${s}`,adminUrl:`${u.origin}/?admin=${admin}`,organizerParticipantUrl:organizerParticipantToken?`${u.origin}/?p=${organizerParticipantToken}`:null},201)}
-if(req.method==='GET'&&path[0]==='api'&&path[1]==='events'&&path[2]){const e=await getEvent(env,path[2]);if(!e)return json({error:'Runde nicht gefunden'},404);const p=await participants(env,e.id);return json({slug:e.slug,name:e.name,status:e.status,participants:p.results.map(x=>({id:x.id,name:x.name}))})}
-if(req.method==='POST'&&path[0]==='api'&&path[1]==='events'&&path[3]==='join'){const e=await getEvent(env,path[2]);if(!e)return json({error:'Runde nicht gefunden'},404);if(e.status!=='open')return json({error:'Die Auslosung wurde bereits gestartet.'},409);const b=await body(req);if(!b.name)return json({error:'Name fehlt'},400);const pId=crypto.randomUUID(),pt=token();await env.DB.prepare('INSERT INTO participants(id,event_id,name,wish,personal_token,created_at) VALUES(?,?,?,?,?,?)').bind(pId,e.id,b.name,b.wish||'',pt,Date.now()).run();for(const ex of (b.exclusions||[])){await env.DB.prepare('INSERT INTO exclusions(participant_id,excluded_id) VALUES(?,?)').bind(pId,ex).run()}return json({token:pt,participantId:pId},201)}
-if(req.method==='GET'&&path[0]==='api'&&path[1]==='p'&&path[2]){const p=await env.DB.prepare('SELECT * FROM participants WHERE personal_token=?').bind(path[2]).first();if(!p)return json({error:'Persönlicher Link ungültig'},404);const e=await env.DB.prepare('SELECT * FROM events WHERE id=?').bind(p.event_id).first();const ex=await env.DB.prepare('SELECT excluded_id FROM exclusions WHERE participant_id=?').bind(p.id).all();const ps=await participants(env,e.id);let assignment=null;if(e.status==='started'){const a=await env.DB.prepare('SELECT a.receiver_id,r.name receiverName,r.wish receiverWish FROM assignments a JOIN participants r ON r.id=a.receiver_id WHERE a.giver_id=?').bind(p.id).first();if(a)assignment={receiverId:a.receiver_id,receiverName:a.receiverName,receiverWish:a.receiverWish}}return json({status:e.status,event:{name:e.name,slug:e.slug},participant:{id:p.id,name:p.name,wish:p.wish,exclusions:ex.results.map(x=>x.excluded_id)},participants:ps.results.map(x=>({id:x.id,name:x.name})),assignment,firstReveal:e.status==='started'&&!p.revealed})}
-if(req.method==='PUT'&&path[0]==='api'&&path[1]==='p'&&path[2]){const p=await env.DB.prepare('SELECT * FROM participants WHERE personal_token=?').bind(path[2]).first();if(!p)return json({error:'Link ungültig'},404);const e=await env.DB.prepare('SELECT status FROM events WHERE id=?').bind(p.event_id).first();if(e.status!=='open')return json({error:'Die Auslosung ist bereits gestartet.'},409);const b=await body(req);await env.DB.prepare('UPDATE participants SET name=?,wish=? WHERE id=?').bind(b.name,b.wish||'',p.id).run();await env.DB.prepare('DELETE FROM exclusions WHERE participant_id=?').bind(p.id).run();for(const ex of (b.exclusions||[]))await env.DB.prepare('INSERT INTO exclusions(participant_id,excluded_id) VALUES(?,?)').bind(p.id,ex).run();return json({ok:true})}
-if(req.method==='GET'&&path[0]==='api'&&path[1]==='admin'&&path[2]){const e=await env.DB.prepare('SELECT * FROM events WHERE admin_token=?').bind(path[2]).first();if(!e)return json({error:'Organisator-Link ungültig'},404);const p=await participants(env,e.id);const ex=await env.DB.prepare('SELECT participant_id,COUNT(*) c FROM exclusions GROUP BY participant_id').all();const counts=new Map(ex.results.map(x=>[x.participant_id,x.c]));return json({slug:e.slug,name:e.name,status:e.status,participants:p.results.map(x=>({id:x.id,name:x.name,wish:x.wish,joined:true,exclusionsCount:counts.get(x.id)||0}))})}
-if(req.method==='POST'&&path[0]==='api'&&path[1]==='admin'&&path[3]==='start'){const e=await env.DB.prepare('SELECT * FROM events WHERE admin_token=?').bind(path[2]).first();if(!e)return json({error:'Organisator-Link ungültig'},404);if(e.status!=='open')return json({error:'Bereits gestartet'},409);const p=(await participants(env,e.id)).results;if(p.length<2)return json({error:'Mindestens zwei Teilnehmer erforderlich.'},400);const exRows=await env.DB.prepare('SELECT participant_id,excluded_id FROM exclusions WHERE participant_id IN (SELECT id FROM participants WHERE event_id=?)').bind(e.id).all();const ex=new Map();for(const x of exRows.results){if(!ex.has(x.participant_id))ex.set(x.participant_id,[]);ex.get(x.participant_id).push(x.excluded_id)}const a=assignment(p,ex);if(!a)return json({error:'Keine gültige Zuordnung möglich. Bitte Ausschlüsse reduzieren.'},409);for(const [g,r] of a)await env.DB.prepare('INSERT INTO assignments(giver_id,receiver_id) VALUES(?,?)').bind(g,r).run();await env.DB.prepare('UPDATE events SET status="started",started_at=? WHERE id=?').bind(Date.now(),e.id).run();return json({ok:true})}
-if(req.method==='GET'&&path[0]==='api'&&path[1]==='admin'&&path[3]==='assignments'){const e=await env.DB.prepare('SELECT * FROM events WHERE admin_token=?').bind(path[2]).first();if(!e)return json({error:'Ungültig'},404);const a=await env.DB.prepare('SELECT g.name giverName,r.name receiverName FROM assignments a JOIN participants g ON g.id=a.giver_id JOIN participants r ON r.id=a.receiver_id WHERE g.event_id=? ORDER BY g.name').bind(e.id).all();return json({assignments:a.results})}
-return json({error:'Nicht gefunden'},404)
-}catch(err){return json({error:err.message||'Serverfehler'},500)}}};
+// ============================================================
+// 🎄 WICHTELN – CLOUDFLARE WORKER API
+// ============================================================
+
+const corsHeaders = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+  "access-control-allow-headers": "content-type",
+};
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      ...corsHeaders,
+    },
+  });
+}
+
+function token() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+
+  return [...bytes]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function createSlug() {
+  return token().slice(0, 8);
+}
+
+async function readBody(request) {
+  try {
+    return await request.json();
+  } catch {
+    return {};
+  }
+}
+
+async function getEvent(env, slug) {
+  return await env.DB
+    .prepare("SELECT * FROM events WHERE slug = ?")
+    .bind(slug)
+    .first();
+}
+
+async function getParticipants(env, eventId) {
+  return await env.DB
+    .prepare(`
+      SELECT id, name, wish
+      FROM participants
+      WHERE event_id = ?
+      ORDER BY created_at
+    `)
+    .bind(eventId)
+    .all();
+}
+
+// ============================================================
+// AUSLOSUNG
+// ============================================================
+
+function createAssignment(participants, exclusions) {
+  const ids = participants.map((p) => p.id);
+
+  const allowed = new Map();
+
+  for (const id of ids) {
+    allowed.set(
+      id,
+      ids.filter(
+        (otherId) =>
+          otherId !== id &&
+          !(exclusions.get(id) || []).includes(otherId)
+      )
+    );
+  }
+
+  for (const list of allowed.values()) {
+    list.sort(() => Math.random() - 0.5);
+  }
+
+  const order = [...ids].sort(
+    (a, b) => allowed.get(a).length - allowed.get(b).length
+  );
+
+  const used = new Set();
+  const result = new Map();
+
+  function backtrack(index) {
+    if (index === order.length) {
+      return true;
+    }
+
+    const giver = order[index];
+
+    const options = [...allowed.get(giver)]
+      .filter((receiver) => !used.has(receiver))
+      .sort(() => Math.random() - 0.5);
+
+    for (const receiver of options) {
+      result.set(giver, receiver);
+      used.add(receiver);
+
+      if (backtrack(index + 1)) {
+        return true;
+      }
+
+      used.delete(receiver);
+      result.delete(giver);
+    }
+
+    return false;
+  }
+
+  return backtrack(0) ? result : null;
+}
+
+// ============================================================
+// WORKER
+// ============================================================
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname.split("/").filter(Boolean);
+
+    // --------------------------------------------------------
+    // CORS
+    // --------------------------------------------------------
+
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders,
+      });
+    }
+
+    try {
+      // ======================================================
+      // API HEALTH CHECK
+      // GET /api/health
+      // ======================================================
+
+      if (
+        request.method === "GET" &&
+        path[0] === "api" &&
+        path[1] === "health"
+      ) {
+        if (!env.DB) {
+          return json(
+            {
+              ok: false,
+              worker: true,
+              database: false,
+              error: "D1 Binding DB fehlt",
+            },
+            500
+          );
+        }
+
+        const result = await env.DB
+          .prepare("SELECT 1 AS test")
+          .first();
+
+        return json({
+          ok: true,
+          worker: true,
+          database: true,
+          databaseTest: result?.test === 1,
+          message: "Wichtel API und D1 funktionieren.",
+        });
+      }
+
+      // ======================================================
+      // API INFO
+      // GET /api
+      // ======================================================
+
+      if (
+        request.method === "GET" &&
+        path[0] === "api" &&
+        path.length === 1
+      ) {
+        return json({
+          ok: true,
+          name: "Wichteln API",
+          version: "1.0.0",
+          endpoints: [
+            "GET /api/health",
+            "POST /api/events",
+            "GET /api/events/:slug",
+            "POST /api/events/:slug/join",
+            "GET /api/p/:token",
+            "PUT /api/p/:token",
+            "GET /api/admin/:token",
+            "POST /api/admin/:token/start",
+            "GET /api/admin/:token/assignments",
+          ],
+        });
+      }
+
+      // ======================================================
+      // NEUE WICHTELRUNDE
+      // POST /api/events
+      // ======================================================
+
+      if (
+        request.method === "POST" &&
+        path[0] === "api" &&
+        path[1] === "events" &&
+        path.length === 2
+      ) {
+        const body = await readBody(request);
+
+        if (!body.name || !String(body.name).trim()) {
+          return json(
+            {
+              ok: false,
+              error: "Der Name der Wichtelrunde fehlt.",
+            },
+            400
+          );
+        }
+
+        if (body.joinSelf && (!body.organizer || !String(body.organizer).trim())) {
+          return json(
+            {
+              ok: false,
+              error: "Der Name des Organisators fehlt.",
+            },
+            400
+          );
+        }
+
+        if (!env.DB) {
+          return json(
+            {
+              ok: false,
+              error: "D1 Binding DB ist nicht vorhanden.",
+            },
+            500
+          );
+        }
+
+        const eventId = crypto.randomUUID();
+        const eventSlug = createSlug();
+        const adminToken = token();
+
+        await env.DB
+          .prepare(`
+            INSERT INTO events
+            (
+              id,
+              slug,
+              name,
+              admin_token,
+              status,
+              created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+          `)
+          .bind(
+            eventId,
+            eventSlug,
+            String(body.name).trim(),
+            adminToken,
+            "open",
+            Date.now()
+          )
+          .run();
+
+        let organizerParticipantToken = null;
+        let organizerParticipantId = null;
+
+        if (body.joinSelf) {
+          organizerParticipantId = crypto.randomUUID();
+          organizerParticipantToken = token();
+
+          await env.DB
+            .prepare(`
+              INSERT INTO participants
+              (
+                id,
+                event_id,
+                name,
+                wish,
+                personal_token,
+                created_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?)
+            `)
+            .bind(
+              organizerParticipantId,
+              eventId,
+              String(body.organizer).trim(),
+              "",
+              organizerParticipantToken,
+              Date.now()
+            )
+            .run();
+        }
+
+        return json(
+          {
+            ok: true,
+            message: "Wichtelrunde erfolgreich erstellt.",
+            slug: eventSlug,
+            adminToken,
+            organizerParticipantToken,
+            publicUrl: `${url.origin}/?event=${eventSlug}`,
+            adminUrl: `${url.origin}/?admin=${adminToken}`,
+            organizerParticipantUrl: organizerParticipantToken
+              ? `${url.origin}/?p=${organizerParticipantToken}`
+              : null,
+          },
+          201
+        );
+      }
+
+      // ======================================================
+      // ÖFFENTLICHE RUNDE ABRUFEN
+      // GET /api/events/:slug
+      // ======================================================
+
+      if (
+        request.method === "GET" &&
+        path[0] === "api" &&
+        path[1] === "events" &&
+        path[2]
+      ) {
+        const event = await getEvent(env, path[2]);
+
+        if (!event) {
+          return json(
+            {
+              ok: false,
+              error: "Runde nicht gefunden.",
+            },
+            404
+          );
+        }
+
+        const participants = await getParticipants(env, event.id);
+
+        return json({
+          ok: true,
+          slug: event.slug,
+          name: event.name,
+          status: event.status,
+          participants: participants.results.map((p) => ({
+            id: p.id,
+            name: p.name,
+          })),
+        });
+      }
+
+      // ======================================================
+      // TEILNEHMER BEITRITT
+      // POST /api/events/:slug/join
+      // ======================================================
+
+      if (
+        request.method === "POST" &&
+        path[0] === "api" &&
+        path[1] === "events" &&
+        path[2] &&
+        path[3] === "join"
+      ) {
+        const event = await getEvent(env, path[2]);
+
+        if (!event) {
+          return json(
+            {
+              ok: false,
+              error: "Runde nicht gefunden.",
+            },
+            404
+          );
+        }
+
+        if (event.status !== "open") {
+          return json(
+            {
+              ok: false,
+              error: "Die Auslosung wurde bereits gestartet.",
+            },
+            409
+          );
+        }
+
+        const body = await readBody(request);
+
+        if (!body.name || !String(body.name).trim()) {
+          return json(
+            {
+              ok: false,
+              error: "Name fehlt.",
+            },
+            400
+          );
+        }
+
+        const participantId = crypto.randomUUID();
+        const personalToken = token();
+
+        await env.DB
+          .prepare(`
+            INSERT INTO participants
+            (
+              id,
+              event_id,
+              name,
+              wish,
+              personal_token,
+              created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+          `)
+          .bind(
+            participantId,
+            event.id,
+            String(body.name).trim(),
+            body.wish || "",
+            personalToken,
+            Date.now()
+          )
+          .run();
+
+        for (const excludedId of body.exclusions || []) {
+          await env.DB
+            .prepare(`
+              INSERT INTO exclusions
+              (
+                participant_id,
+                excluded_id
+              )
+              VALUES (?, ?)
+            `)
+            .bind(participantId, excludedId)
+            .run();
+        }
+
+        return json(
+          {
+            ok: true,
+            token: personalToken,
+            participantId,
+            personalUrl: `${url.origin}/?p=${personalToken}`,
+          },
+          201
+        );
+      }
+
+      // ======================================================
+      // PERSÖNLICHER LINK
+      // GET /api/p/:token
+      // ======================================================
+
+      if (
+        request.method === "GET" &&
+        path[0] === "api" &&
+        path[1] === "p" &&
+        path[2]
+      ) {
+        const participant = await env.DB
+          .prepare(`
+            SELECT *
+            FROM participants
+            WHERE personal_token = ?
+          `)
+          .bind(path[2])
+          .first();
+
+        if (!participant) {
+          return json(
+            {
+              ok: false,
+              error: "Persönlicher Link ungültig.",
+            },
+            404
+          );
+        }
+
+        const event = await env.DB
+          .prepare(`
+            SELECT *
+            FROM events
+            WHERE id = ?
+          `)
+          .bind(participant.event_id)
+          .first();
+
+        const exclusions = await env.DB
+          .prepare(`
+            SELECT excluded_id
+            FROM exclusions
+            WHERE participant_id = ?
+          `)
+          .bind(participant.id)
+          .all();
+
+        const participants = await getParticipants(env, event.id);
+
+        let assignment = null;
+
+        if (event.status === "started") {
+          const result = await env.DB
+            .prepare(`
+              SELECT
+                a.receiver_id,
+                r.name AS receiverName,
+                r.wish AS receiverWish
+              FROM assignments a
+              JOIN participants r
+                ON r.id = a.receiver_id
+              WHERE a.giver_id = ?
+            `)
+            .bind(participant.id)
+            .first();
+
+          if (result) {
+            assignment = {
+              receiverId: result.receiver_id,
+              receiverName: result.receiverName,
+              receiverWish: result.receiverWish,
+            };
+          }
+        }
+
+        return json({
+          ok: true,
+          status: event.status,
+          event: {
+            name: event.name,
+            slug: event.slug,
+          },
+          participant: {
+            id: participant.id,
+            name: participant.name,
+            wish: participant.wish,
+            exclusions: exclusions.results.map(
+              (x) => x.excluded_id
+            ),
+          },
+          participants: participants.results.map((p) => ({
+            id: p.id,
+            name: p.name,
+          })),
+          assignment,
+          firstReveal:
+            event.status === "started" &&
+            participant.revealed === 0,
+        });
+      }
+
+      // ======================================================
+      // PERSÖNLICHE DATEN ÄNDERN
+      // PUT /api/p/:token
+      // ======================================================
+
+      if (
+        request.method === "PUT" &&
+        path[0] === "api" &&
+        path[1] === "p" &&
+        path[2]
+      ) {
+        const participant = await env.DB
+          .prepare(`
+            SELECT *
+            FROM participants
+            WHERE personal_token = ?
+          `)
+          .bind(path[2])
+          .first();
+
+        if (!participant) {
+          return json(
+            {
+              ok: false,
+              error: "Persönlicher Link ungültig.",
+            },
+            404
+          );
+        }
+
+        const event = await env.DB
+          .prepare(`
+            SELECT status
+            FROM events
+            WHERE id = ?
+          `)
+          .bind(participant.event_id)
+          .first();
+
+        if (event.status !== "open") {
+          return json(
+            {
+              ok: false,
+              error: "Die Auslosung wurde bereits gestartet.",
+            },
+            409
+          );
+        }
+
+        const body = await readBody(request);
+
+        if (!body.name || !String(body.name).trim()) {
+          return json(
+            {
+              ok: false,
+              error: "Name fehlt.",
+            },
+            400
+          );
+        }
+
+        await env.DB
+          .prepare(`
+            UPDATE participants
+            SET name = ?, wish = ?
+            WHERE id = ?
+          `)
+          .bind(
+            String(body.name).trim(),
+            body.wish || "",
+            participant.id
+          )
+          .run();
+
+        await env.DB
+          .prepare(`
+            DELETE FROM exclusions
+            WHERE participant_id = ?
+          `)
+          .bind(participant.id)
+          .run();
+
+        for (const excludedId of body.exclusions || []) {
+          await env.DB
+            .prepare(`
+              INSERT INTO exclusions
+              (
+                participant_id,
+                excluded_id
+              )
+              VALUES (?, ?)
+            `)
+            .bind(participant.id, excludedId)
+            .run();
+        }
+
+        return json({
+          ok: true,
+          message: "Daten gespeichert.",
+        });
+      }
+
+      // ======================================================
+      // ADMIN
+      // GET /api/admin/:token
+      // ======================================================
+
+      if (
+        request.method === "GET" &&
+        path[0] === "api" &&
+        path[1] === "admin" &&
+        path[2] &&
+        !path[3]
+      ) {
+        const event = await env.DB
+          .prepare(`
+            SELECT *
+            FROM events
+            WHERE admin_token = ?
+          `)
+          .bind(path[2])
+          .first();
+
+        if (!event) {
+          return json(
+            {
+              ok: false,
+              error: "Organisator-Link ungültig.",
+            },
+            404
+          );
+        }
+
+        const participants = await getParticipants(env, event.id);
+
+        const exclusions = await env.DB
+          .prepare(`
+            SELECT participant_id, COUNT(*) AS count
+            FROM exclusions
+            GROUP BY participant_id
+          `)
+          .all();
+
+        const counts = new Map(
+          exclusions.results.map((x) => [
+            x.participant_id,
+            x.count,
+          ])
+        );
+
+        return json({
+          ok: true,
+          slug: event.slug,
+          name: event.name,
+          status: event.status,
+          participants: participants.results.map((p) => ({
+            id: p.id,
+            name: p.name,
+            wish: p.wish,
+            joined: true,
+            exclusionsCount:
+              counts.get(p.id) || 0,
+          })),
+        });
+      }
+
+      // ======================================================
+      // AUSLOSUNG STARTEN
+      // POST /api/admin/:token/start
+      // ======================================================
+
+      if (
+        request.method === "POST" &&
+        path[0] === "api" &&
+        path[1] === "admin" &&
+        path[2] &&
+        path[3] === "start"
+      ) {
+        const event = await env.DB
+          .prepare(`
+            SELECT *
+            FROM events
+            WHERE admin_token = ?
+          `)
+          .bind(path[2])
+          .first();
+
+        if (!event) {
+          return json(
+            {
+              ok: false,
+              error: "Organisator-Link ungültig.",
+            },
+            404
+          );
+        }
+
+        if (event.status !== "open") {
+          return json(
+            {
+              ok: false,
+              error: "Die Auslosung wurde bereits gestartet.",
+            },
+            409
+          );
+        }
+
+        const participants = (
+          await getParticipants(env, event.id)
+        ).results;
+
+        if (participants.length < 2) {
+          return json(
+            {
+              ok: false,
+              error:
+                "Mindestens zwei Teilnehmer erforderlich.",
+            },
+            400
+          );
+        }
+
+        const exclusionRows = await env.DB
+          .prepare(`
+            SELECT participant_id, excluded_id
+            FROM exclusions
+            WHERE participant_id IN (
+              SELECT id
+              FROM participants
+              WHERE event_id = ?
+            )
+          `)
+          .bind(event.id)
+          .all();
+
+        const exclusions = new Map();
+
+        for (const row of exclusionRows.results) {
+          if (!exclusions.has(row.participant_id)) {
+            exclusions.set(row.participant_id, []);
+          }
+
+          exclusions
+            .get(row.participant_id)
+            .push(row.excluded_id);
+        }
+
+        const assignment = createAssignment(
+          participants,
+          exclusions
+        );
+
+        if (!assignment) {
+          return json(
+            {
+              ok: false,
+              error:
+                "Keine gültige Zuordnung möglich. Bitte Ausschlüsse reduzieren.",
+            },
+            409
+          );
+        }
+
+        for (const [giverId, receiverId] of assignment) {
+          await env.DB
+            .prepare(`
+              INSERT INTO assignments
+              (
+                giver_id,
+                receiver_id
+              )
+              VALUES (?, ?)
+            `)
+            .bind(giverId, receiverId)
+            .run();
+        }
+
+        await env.DB
+          .prepare(`
+            UPDATE events
+            SET
+              status = 'started',
+              started_at = ?
+            WHERE id = ?
+          `)
+          .bind(Date.now(), event.id)
+          .run();
+
+        return json({
+          ok: true,
+          message: "Auslosung erfolgreich gestartet.",
+        });
+      }
+
+      // ======================================================
+      // ZUORDNUNGEN FÜR ORGANISATOR
+      // GET /api/admin/:token/assignments
+      // ======================================================
+
+      if (
+        request.method === "GET" &&
+        path[0] === "api" &&
+        path[1] === "admin" &&
+        path[2] &&
+        path[3] === "assignments"
+      ) {
+        const event = await env.DB
+          .prepare(`
+            SELECT *
+            FROM events
+            WHERE admin_token = ?
+          `)
+          .bind(path[2])
+          .first();
+
+        if (!event) {
+          return json(
+            {
+              ok: false,
+              error: "Organisator-Link ungültig.",
+            },
+            404
+          );
+        }
+
+        const assignments = await env.DB
+          .prepare(`
+            SELECT
+              g.name AS giverName,
+              r.name AS receiverName
+            FROM assignments a
+            JOIN participants g
+              ON g.id = a.giver_id
+            JOIN participants r
+              ON r.id = a.receiver_id
+            WHERE g.event_id = ?
+            ORDER BY g.name
+          `)
+          .bind(event.id)
+          .all();
+
+        return json({
+          ok: true,
+          assignments: assignments.results,
+        });
+      }
+
+      // ======================================================
+      // NICHT GEFUNDEN
+      // ======================================================
+
+      return json(
+        {
+          ok: false,
+          error: "API-Endpunkt nicht gefunden.",
+          path: url.pathname,
+          method: request.method,
+        },
+        404
+      );
+
+    } catch (error) {
+      console.error("WICHTEL API ERROR:", error);
+
+      return json(
+        {
+          ok: false,
+          error: error?.message || "Serverfehler",
+          type: error?.name || "UnknownError",
+        },
+        500
+      );
+    }
+  },
+};
