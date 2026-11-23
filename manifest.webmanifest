@@ -1,0 +1,9 @@
+{
+  "name": "Wichteln",
+  "short_name": "Wichteln",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f2e8",
+  "theme_color": "#10261d",
+  "icons": []
+}

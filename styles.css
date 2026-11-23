@@ -1,0 +1,11 @@
+:root{font-family:Inter,system-ui,sans-serif;color:#17221d;background:#f7f2e8;font-synthesis:none;text-rendering:optimizeLegibility}
+*{box-sizing:border-box}body{margin:0;min-width:320px;background:radial-gradient(circle at 10% 0%,rgba(216,180,106,.18),transparent 28%),linear-gradient(180deg,#fbf8f1 0%,#f4eee2 100%);min-height:100vh}
+button,input,textarea{font:inherit}.serif{font-family:'Playfair Display',serif}.glass{background:rgba(255,255,255,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.8)}
+.card{border-radius:28px;box-shadow:0 24px 70px rgba(16,38,29,.12)}.btn{transition:transform .18s ease,box-shadow .18s ease,background .18s ease}.btn:active{transform:scale(.98)}.btn:focus-visible{outline:3px solid rgba(216,180,106,.55);outline-offset:3px}
+.progress-dot{height:7px;border-radius:999px;background:#ddd6c9;transition:.25s}.progress-dot.active{background:#17382a}.progress-dot.done{background:#d8b46a}
+.snow{position:fixed;inset:0;pointer-events:none;overflow:hidden;opacity:.35}.snow span{position:absolute;top:-20px;color:#fff;animation:fall linear infinite}.snow span:nth-child(1){left:8%;animation-duration:12s}.snow span:nth-child(2){left:27%;animation-duration:17s;animation-delay:2s}.snow span:nth-child(3){left:52%;animation-duration:14s;animation-delay:4s}.snow span:nth-child(4){left:78%;animation-duration:19s;animation-delay:1s}.snow span:nth-child(5){left:92%;animation-duration:13s;animation-delay:5s}@keyframes fall{to{transform:translateY(110vh) rotate(180deg)}}
+.wiggle{animation:wiggle 1.4s ease-in-out infinite}@keyframes wiggle{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+.wichtel-arm{transform-origin:72px 100px;animation:reach 2.4s ease-in-out infinite alternate}@keyframes reach{to{transform:rotate(-15deg) translate(-2px,2px)}}
+.paper{animation:paper 3s ease-in-out infinite}@keyframes paper{0%,25%{transform:translateY(30px) rotate(8deg);opacity:.2}45%,80%{transform:translateY(0) rotate(-2deg);opacity:1}100%{transform:translateY(-2px) rotate(0)}}
+.count{font-variant-numeric:tabular-nums}
+@media(max-width:640px){.card{border-radius:24px}.desktop-only{display:none!important}}
