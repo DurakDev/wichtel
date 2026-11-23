@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node -e \"console.log('Wichteln: no frontend build step required; Wrangler serves the static assets.')\"",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute wichteln-db --remote --file=./schema.sql"
+    "db:init": "wrangler d1 execute wichtel-db --remote --file=./schema.sql"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
