@@ -1688,7 +1688,7 @@ function wichtelAnimation() {
 
           <video
             id="revealVideo"
-            src="/wichtel_white_fade.mp4"
+            src="./wichtel_white_fade.mp4"
             autoplay
             muted
             playsinline
