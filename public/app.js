@@ -1686,12 +1686,15 @@ function wichtelAnimation() {
 
         <div class="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white">
 
-          <img
-            id="revealGif"
-            src="/wichtel_white_fade.gif"
-            alt="Auslosung"
+          <video
+            id="revealVideo"
+            src="/wichtel_white_fade.mp4"
+            autoplay
+            muted
+            playsinline
+            preload="auto"
             class="h-full w-full object-contain"
-          />
+          ></video>
 
         </div>
 
