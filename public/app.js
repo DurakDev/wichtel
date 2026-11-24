@@ -1663,14 +1663,13 @@ async function saveEdit() {
 // AUSLOSUNGS-ANIMATION
 
 // ============================================================
-
 function wichtelAnimation() {
 
   if (revealTimer) {
     clearTimeout(revealTimer);
   }
 
-  const REVEAL_GIF_DURATION = 10000;
+  const REVEAL_VIDEO_DURATION = 10000;
 
   shell(`
 
@@ -1722,9 +1721,32 @@ function wichtelAnimation() {
 
   bindActions();
 
+  const video = document.getElementById('revealVideo');
+
+  if (video) {
+
+    video.addEventListener('error', () => {
+      console.error('❌ Wichtel-Video konnte nicht geladen werden:', video.error);
+    });
+
+    video.addEventListener('loadeddata', () => {
+      console.log('✅ Wichtel-Video geladen');
+      console.log('Dauer:', video.duration);
+    });
+
+    video.addEventListener('ended', () => {
+      console.log('✅ Wichtel-Video beendet');
+      renderResult();
+    }, { once: true });
+
+    video.play().catch(error => {
+      console.error('❌ Video konnte nicht gestartet werden:', error);
+    });
+  }
+
   revealTimer = setTimeout(() => {
     renderResult();
-  }, REVEAL_GIF_DURATION);
+  }, REVEAL_VIDEO_DURATION);
 }
 
 
