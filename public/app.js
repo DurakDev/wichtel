@@ -1663,13 +1663,14 @@ async function saveEdit() {
 // AUSLOSUNGS-ANIMATION
 
 // ============================================================
+
 function wichtelAnimation() {
+
+  console.log('🎄 wichtelAnimation() gestartet');
 
   if (revealTimer) {
     clearTimeout(revealTimer);
   }
-
-  const REVEAL_VIDEO_DURATION = 10000;
 
   shell(`
 
@@ -1683,7 +1684,9 @@ function wichtelAnimation() {
           Ein kleiner Moment …
         </div>
 
-        <div class="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white">
+        <div
+          class="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white"
+        >
 
           <video
             id="revealVideo"
@@ -1692,6 +1695,7 @@ function wichtelAnimation() {
             muted
             playsinline
             preload="auto"
+            controls
             class="h-full w-full object-contain"
           ></video>
 
@@ -1723,30 +1727,45 @@ function wichtelAnimation() {
 
   const video = document.getElementById('revealVideo');
 
-  if (video) {
+  console.log('🎬 Video-Element:', video);
 
-    video.addEventListener('error', () => {
-      console.error('❌ Wichtel-Video konnte nicht geladen werden:', video.error);
-    });
-
-    video.addEventListener('loadeddata', () => {
-      console.log('✅ Wichtel-Video geladen');
-      console.log('Dauer:', video.duration);
-    });
-
-    video.addEventListener('ended', () => {
-      console.log('✅ Wichtel-Video beendet');
-      renderResult();
-    }, { once: true });
-
-    video.play().catch(error => {
-      console.error('❌ Video konnte nicht gestartet werden:', error);
-    });
+  if (!video) {
+    console.error('❌ revealVideo wurde NICHT gefunden!');
+    return;
   }
 
-  revealTimer = setTimeout(() => {
-    renderResult();
-  }, REVEAL_VIDEO_DURATION);
+  console.log('🎬 Video src:', video.src);
+
+  video.addEventListener('loadstart', () => {
+    console.log('🎬 Video loadstart');
+  });
+
+  video.addEventListener('loadedmetadata', () => {
+    console.log('🎬 Video metadata geladen');
+    console.log('Dauer:', video.duration);
+    console.log('Größe:', video.videoWidth, 'x', video.videoHeight);
+  });
+
+  video.addEventListener('loadeddata', () => {
+    console.log('🎬 Video-Daten geladen');
+  });
+
+  video.addEventListener('canplay', () => {
+    console.log('🎬 Video kann abgespielt werden');
+  });
+
+  video.addEventListener('error', () => {
+    console.error('❌ VIDEO FEHLER:', video.error);
+  });
+
+  video.play()
+    .then(() => {
+      console.log('▶️ Video gestartet');
+    })
+    .catch(error => {
+      console.error('❌ Video.play() fehlgeschlagen:', error);
+    });
+
 }
 
 
