@@ -689,7 +689,17 @@ export default {
           );
         }
 
-        const participants = await getParticipants(env, event.id);
+        // Personal tokens are only returned through the authenticated
+        // organizer endpoint so the organizer can share participant links.
+        const participants = await env.DB
+          .prepare(`
+            SELECT id, name, wish, personal_token
+            FROM participants
+            WHERE event_id = ?
+            ORDER BY created_at
+          `)
+          .bind(event.id)
+          .all();
 
         const exclusions = await env.DB
           .prepare(`
@@ -715,6 +725,7 @@ export default {
             id: p.id,
             name: p.name,
             wish: p.wish,
+            personalToken: p.personal_token,
             joined: true,
             exclusionsCount:
               counts.get(p.id) || 0,
