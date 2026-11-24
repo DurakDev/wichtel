@@ -1667,10 +1667,10 @@ async function saveEdit() {
 function wichtelAnimation() {
 
   if (revealTimer) {
-
     clearTimeout(revealTimer);
-
   }
+
+  const REVEAL_GIF_DURATION = 10000;
 
   shell(`
 
@@ -1681,69 +1681,34 @@ function wichtelAnimation() {
       <div class="mx-auto max-w-md">
 
         <div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">
-
           Ein kleiner Moment …
+        </div>
+
+        <div class="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white">
+
+          <img
+            id="revealGif"
+            src="/wichtel_white_fade.gif"
+            alt="Auslosung"
+            class="h-full w-full object-contain"
+          />
 
         </div>
 
-        <div class="relative mx-auto h-64 w-64">
-
-          <div class="wiggle absolute inset-x-10 bottom-8 rounded-[40%] bg-pine px-8 pb-5 pt-12 text-7xl shadow-2xl">
-
-            🎒
-
-          </div>
-
-          <div class="absolute left-1/2 top-5 -translate-x-1/2 text-7xl">
-
-            🧝‍♂️
-
-          </div>
-
-          <div class="paper absolute left-1/2 top-20 -translate-x-1/2 rounded-lg bg-white px-6 py-4 text-3xl shadow-xl">
-
-            📜
-
-          </div>
-
-        </div>
-
-        <h1 class="serif text-3xl text-pine">
-
+        <h1 class="serif mt-5 text-3xl text-pine">
           Der Wichtel greift in den Sack …
-
         </h1>
 
-        <div class="mt-6 h-2 overflow-hidden rounded-full bg-black/5">
-
-          <div
-
-            id="bar"
-
-            class="h-full w-0 rounded-full bg-gold transition-all duration-[10000ms] ease-linear"
-
-          ></div>
-
-        </div>
-
         <p class="mt-3 text-xs text-slate-400">
-
           Dein Geschenkgeheimnis wird gleich gelüftet.
-
         </p>
 
         <div class="mt-5">
-
           ${button(
-
             'Überspringen',
-
             'skipReveal',
-
             false
-
           )}
-
         </div>
 
       </div>
@@ -1754,31 +1719,11 @@ function wichtelAnimation() {
 
   bindActions();
 
-  requestAnimationFrame(() => {
-
-    document
-
-      .querySelector('#bar')
-
-      ?.style.setProperty(
-
-        'width',
-
-        '100%'
-
-      );
-
-  });
-
-  revealTimer =
-
-    setTimeout(() => {
-
-      renderResult();
-
-    }, 10000);
-
+  revealTimer = setTimeout(() => {
+    renderResult();
+  }, REVEAL_GIF_DURATION);
 }
+
 
 function skipReveal() {
 
