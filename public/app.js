@@ -1664,6 +1664,22 @@ async function saveEdit() {
 
 // ============================================================
 
+function markRevealSeen() {
+
+  if (participantToken) {
+
+    localStorage.setItem(
+
+      'wichteln-revealed-' + participantToken,
+
+      '1'
+
+    );
+
+  }
+
+}
+
 function wichtelAnimation() {
 
   console.log('🎄 wichtelAnimation() gestartet');
@@ -1690,7 +1706,7 @@ function wichtelAnimation() {
 
           <video
             id="revealVideo"
-            src="./wichtel_white_fade.mp4"
+            src="/wichtel_white_fade.mp4"
             autoplay
             muted
             playsinline
@@ -1727,43 +1743,49 @@ function wichtelAnimation() {
 
   const video = document.getElementById('revealVideo');
 
-  console.log('🎬 Video-Element:', video);
-
   if (!video) {
     console.error('❌ revealVideo wurde NICHT gefunden!');
     return;
   }
 
-  console.log('🎬 Video src:', video.src);
+  video.muted = true;
 
-  video.addEventListener('loadstart', () => {
-    console.log('🎬 Video loadstart');
-  });
+  const finishReveal = () => {
 
-  video.addEventListener('loadedmetadata', () => {
-    console.log('🎬 Video metadata geladen');
-    console.log('Dauer:', video.duration);
-    console.log('Größe:', video.videoWidth, 'x', video.videoHeight);
-  });
+    markRevealSeen();
 
-  video.addEventListener('loadeddata', () => {
-    console.log('🎬 Video-Daten geladen');
-  });
+    if (revealTimer) {
+      clearTimeout(revealTimer);
+      revealTimer = null;
+    }
 
-  video.addEventListener('canplay', () => {
-    console.log('🎬 Video kann abgespielt werden');
-  });
+    renderResult();
+
+  };
+
+  video.addEventListener('ended', finishReveal);
 
   video.addEventListener('error', () => {
+
     console.error('❌ VIDEO FEHLER:', video.error);
+
   });
+
+  revealTimer = setTimeout(() => {
+
+    if (video.currentTime === 0) {
+      console.warn('⏱️ Video konnte nicht rechtzeitig starten.');
+      return;
+    }
+
+  }, 5000);
 
   video.play()
     .then(() => {
       console.log('▶️ Video gestartet');
     })
     .catch(error => {
-      console.error('❌ Video.play() fehlgeschlagen:', error);
+      console.warn('❌ Automatische Wiedergabe blockiert:', error);
     });
 
 }
@@ -1778,6 +1800,8 @@ function skipReveal() {
     revealTimer = null;
 
   }
+
+  markRevealSeen();
 
   renderResult();
 
@@ -1904,8 +1928,6 @@ async function initParticipant() {
       participantToken;
 
     if (!localStorage.getItem(key)) {
-
-      localStorage.setItem(key, '1');
 
       wichtelAnimation();
 
