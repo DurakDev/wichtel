@@ -1,8 +1,9 @@
-const CACHE = 'wichteln-v4';
+const CACHE = 'wichteln-v5';
 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/tailwind.css',
   '/styles.css',
   '/manifest.webmanifest'
 ];
