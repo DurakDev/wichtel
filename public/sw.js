@@ -49,6 +49,7 @@ self.addEventListener('fetch', event => {
   // Always fetch the app and service worker fresh.
   if (
     url.pathname === '/app.js' ||
+    url.pathname.startsWith('/js/') ||
     url.pathname === '/sw.js'
   ) {
     event.respondWith(
