@@ -1,6 +1,6 @@
 import { app, adminToken, params, participantToken, eventSlug } from './js/shared.js';
 import { renderJoin, renderIntro, renderWish, nextName, saveWish, joinNow, copyLink } from './js/join.js';
-import { editParticipant, saveEdit, renderResult, skipReveal, initParticipant } from './js/participant.js';
+import { editParticipant, saveEdit, renderResult, renderParticipantHome, skipReveal, initParticipant } from './js/participant.js';
 import { createEvent, startDraw, showAssignments, copyPublicLink, copyOrganizerParticipantLink, renderAdmin, renderHome } from './js/admin.js';
 
 const actions = {
@@ -12,6 +12,7 @@ const actions = {
   copyLink,
   editParticipant,
   saveEdit,
+  showParticipantHome: renderParticipantHome,
   renderResult,
   skipReveal,
   createEvent,

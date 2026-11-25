@@ -8,4 +8,8 @@ button,input,textarea{font:inherit}.serif{font-family:'Playfair Display',serif}.
 .wichtel-arm{transform-origin:72px 100px;animation:reach 2.4s ease-in-out infinite alternate}@keyframes reach{to{transform:rotate(-15deg) translate(-2px,2px)}}
 .paper{animation:paper 3s ease-in-out infinite}@keyframes paper{0%,25%{transform:translateY(30px) rotate(8deg);opacity:.2}45%,80%{transform:translateY(0) rotate(-2deg);opacity:1}100%{transform:translateY(-2px) rotate(0)}}
 .count{font-variant-numeric:tabular-nums}
+.participant-name-carousel{position:relative;display:grid;min-height:2.5rem;place-items:center;overflow:hidden}
+.participant-name-carousel__name{grid-area:1/1;opacity:0;transform:translateY(.5rem);transition:opacity .45s ease,transform .45s ease}
+.participant-name-carousel__name.is-active{opacity:1;transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){.participant-name-carousel__name{transition:none}}
 @media(max-width:640px){.card{border-radius:24px}.desktop-only{display:none!important}}

@@ -3,6 +3,14 @@ import { button, esc, getJson, header, icon, shell } from './shared.js';
 import { renderJoin } from './join.js';
 
 let revealTimer = null;
+let nameCycleTimer = null;
+
+function stopNameCycle() {
+  if (nameCycleTimer !== null) {
+    clearInterval(nameCycleTimer);
+    nameCycleTimer = null;
+  }
+}
 
 export async function loadParticipant(token) {
   if (!token) { alert('Kein persönlicher Link vorhanden.'); return false; }
@@ -15,11 +23,39 @@ export async function loadParticipant(token) {
 
 export async function editParticipant() { if (await loadParticipant(participantToken)) renderEdit(); }
 
+export function renderParticipantHome(successMessage = '') {
+  if (!state.joined) return renderJoin();
+  stopNameCycle();
+
+  const participants = state.joined.participants || state.participants;
+  const exclusions = new Set(state.joined.participant?.exclusions || state.exclusions);
+  const excludedNames = participants.filter(person => exclusions.has(person.id)).map(person => person.name);
+  const names = participants.length
+    ? participants.map((person, index) => `<span class="participant-name-carousel__name${index === 0 ? ' is-active' : ''}" aria-hidden="${index !== 0}">${esc(person.name)}</span>`).join('')
+    : `<span class="participant-name-carousel__name is-active">Eure Wichtelrunde</span>`;
+
+  shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na, wen wirst du wohl beschenken?</h1><div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><p class="text-xs font-bold uppercase tracking-wider text-gold">Vielleicht ist es …</p><div class="participant-name-carousel mt-2" aria-label="Alle Teilnehmer" aria-live="off">${names}</div></div><p class="mt-4 text-center text-sm leading-6 text-slate-600">Bis zur Auslosung bleibt es spannend. Dein persönlicher Link verrät dir später, wen du beschenkst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Deine persönlichen Angaben</div><dl class="mt-3 space-y-3 text-sm"><div class="flex justify-between gap-4"><dt class="text-slate-500">Name</dt><dd class="text-right font-semibold text-pine">${esc(state.name)}</dd></div><div class="flex justify-between gap-4"><dt class="text-slate-500">Wunsch</dt><dd class="text-right font-semibold text-pine">${esc(state.wish || 'Noch kein Wunsch hinterlegt')}</dd></div><div class="flex justify-between gap-4"><dt class="text-slate-500">Ausschlüsse</dt><dd class="text-right font-semibold text-pine">${esc(excludedNames.length ? excludedNames.join(', ') : 'Keine')}</dd></div></dl></div>${successMessage ? `<p class="mt-4 rounded-2xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-800" role="status">✓ ${esc(successMessage)}</p>` : ''}<div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div></div>`);
+
+  const carousel = document.querySelector('.participant-name-carousel');
+  const nameElements = carousel?.querySelectorAll('.participant-name-carousel__name') || [];
+  if (nameElements.length < 2 || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
+
+  let activeIndex = 0;
+  nameCycleTimer = setInterval(() => {
+    nameElements[activeIndex].classList.remove('is-active');
+    nameElements[activeIndex].setAttribute('aria-hidden', 'true');
+    activeIndex = (activeIndex + 1) % nameElements.length;
+    nameElements[activeIndex].classList.add('is-active');
+    nameElements[activeIndex].setAttribute('aria-hidden', 'false');
+  }, 2600);
+}
+
 export function renderEdit() {
   if (!state.joined) return renderJoin();
+  stopNameCycle();
   const locked = state.joined.status === 'started', currentId = state.joined.participant?.id;
   const people = state.participants.filter(p => p.id !== currentId).map(p => `<label class="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5 ${locked ? 'opacity-60' : ''}"><span>${esc(p.name)}</span><input type="checkbox" value="${esc(p.id)}" ${locked ? 'disabled' : ''} ${state.exclusions.includes(p.id) ? 'checked' : ''} class="h-5 w-5 accent-pine"/></label>`).join('');
-  shell(`${header(locked ? 'Auslosung gestartet' : 'Angaben bearbeiten')}<div class="card glass p-6 sm:p-8"><div class="flex items-start justify-between gap-4"><div><div class="mb-3 text-4xl">${locked ? '🔒' : '✏️'}</div><h1 class="serif text-3xl text-pine">Deine Angaben</h1></div>${locked ? '<span class="rounded-full bg-pine/10 px-3 py-1 text-xs font-bold text-pine">Gesperrt</span>' : ''}</div><p class="mt-3 text-sm leading-6 text-slate-600">${locked ? 'Die Auslosung wurde bereits durchgeführt. Deine Angaben können nicht mehr verändert werden.' : 'Du kannst alles bis zum Start der Auslosung ändern.'}</p><label class="mt-6 block text-sm font-bold text-pine">Name</label><input id="editName" ${locked ? 'disabled' : ''} value="${esc(state.name)}" class="mt-2 w-full rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5 disabled:opacity-60"/><label class="mt-5 block text-sm font-bold text-pine">Wunsch / Geschenkidee</label><textarea id="editWish" ${locked ? 'disabled' : ''} rows="4" class="mt-2 w-full resize-none rounded-2xl bg-white p-4 ring-1 ring-black/5 disabled:opacity-60">${esc(state.wish)}</textarea><div class="mt-5"><div class="text-sm font-bold text-pine">Ausschlüsse</div><div class="mt-2 space-y-2">${people}</div></div>${locked ? `<div class="mt-6">${button('Zurück zur Zuordnung', 'renderResult', false)}</div>` : `<div class="mt-6">${button(`${icon('check', 'w-4 h-4')} Änderungen speichern`, 'saveEdit')}</div>`}</div>`);
+  shell(`${header(locked ? 'Auslosung gestartet' : 'Angaben bearbeiten')}<div class="card glass p-6 sm:p-8"><div class="flex items-start justify-between gap-4"><div><div class="mb-3 text-4xl">${locked ? '🔒' : '✏️'}</div><h1 class="serif text-3xl text-pine">Deine Angaben</h1></div>${locked ? '<span class="rounded-full bg-pine/10 px-3 py-1 text-xs font-bold text-pine">Gesperrt</span>' : ''}</div><p class="mt-3 text-sm leading-6 text-slate-600">${locked ? 'Die Auslosung wurde bereits durchgeführt. Deine Angaben können nicht mehr verändert werden.' : 'Du kannst alles bis zum Start der Auslosung ändern.'}</p><label class="mt-6 block text-sm font-bold text-pine">Name</label><input id="editName" ${locked ? 'disabled' : ''} value="${esc(state.name)}" class="mt-2 w-full rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5 disabled:opacity-60"/><label class="mt-5 block text-sm font-bold text-pine">Wunsch / Geschenkidee</label><textarea id="editWish" ${locked ? 'disabled' : ''} rows="4" class="mt-2 w-full resize-none rounded-2xl bg-white p-4 ring-1 ring-black/5 disabled:opacity-60">${esc(state.wish)}</textarea><div class="mt-5"><div class="text-sm font-bold text-pine">Ausschlüsse</div><div class="mt-2 space-y-2">${people}</div></div>${locked ? `<div class="mt-6">${button('Zurück zur Zuordnung', 'renderResult', false)}</div>` : `<div class="mt-6"><div class="grid gap-3 sm:grid-cols-2">${button(`${icon('check', 'w-4 h-4')} Änderungen speichern`, 'saveEdit')}${button('Zurück zur Übersicht', 'showParticipantHome', false)}</div></div>`}</div>`);
 }
 
 export async function saveEdit() {
@@ -30,13 +66,14 @@ export async function saveEdit() {
   try {
     const { response, data } = await getJson(`${API}/p/${encodeURIComponent(participantToken)}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, wish, exclusions }) });
     if (!response.ok) return alert(data.error || 'Speichern fehlgeschlagen.');
-    if (await loadParticipant(participantToken)) renderEdit();
+    if (await loadParticipant(participantToken)) renderParticipantHome('Änderungen gespeichert. Deine Angaben sind aktuell.');
   } catch (error) { alert(`Die Änderungen konnten nicht gespeichert werden.\n\n${error.message}`); }
 }
 
 export function markRevealSeen() { if (participantToken) localStorage.setItem('wichteln-revealed-' + participantToken, '1'); }
 
 export function wichtelAnimation() {
+  stopNameCycle();
   console.log('🎄 wichtelAnimation() gestartet'); if (revealTimer) clearTimeout(revealTimer);
   shell(`${header('Deine Auslosung')}<div class="card glass p-6 sm:p-10 text-center"><div class="mx-auto max-w-md"><div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">Ein kleiner Moment …</div><div class="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white"><video id="revealVideo" src="/wichtel_white_fade.mp4" autoplay muted playsinline preload="auto" controls class="h-full w-full object-contain"></video></div><h1 class="serif mt-5 text-3xl text-pine">Der Wichtel greift in den Sack …</h1><p class="mt-3 text-xs text-slate-400">Dein Geschenkgeheimnis wird gleich gelüftet.</p><div class="mt-5">${button('Überspringen', 'skipReveal', false)}</div></div></div>`);
   const video = document.getElementById('revealVideo');
@@ -51,6 +88,7 @@ export function wichtelAnimation() {
 export function skipReveal() { if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; } markRevealSeen(); renderResult(); }
 
 export function renderResult() {
+  stopNameCycle();
   if (!state.joined) return;
   const assignment = state.joined.assignment; if (!assignment) return renderEdit();
   shell(`${header('Dein Wichtel')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 py-8 text-center text-white"><div class="text-5xl">🎁</div><div class="mt-3 text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h1 class="serif mt-2 text-5xl">${esc(assignment.receiverName)}</h1></div><div class="p-6 sm:p-8"><div class="rounded-3xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 text-pine">${esc(assignment.receiverWish || 'Dieser Wichtel hat keinen Wunsch hinterlegt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div></div></div>`);
@@ -58,10 +96,14 @@ export function renderResult() {
 
 export async function initParticipant() {
   if (!await loadParticipant(participantToken)) return;
-  if (state.joined.status === 'started' && state.joined.assignment) {
-    const key = 'wichteln-revealed-' + participantToken;
-    if (!localStorage.getItem(key)) wichtelAnimation(); else renderResult();
+  if (state.joined.status === 'started') {
+    if (state.joined.assignment) {
+      const key = 'wichteln-revealed-' + participantToken;
+      if (!localStorage.getItem(key)) wichtelAnimation(); else renderResult();
+    } else {
+      renderEdit();
+    }
     return;
   }
-  renderEdit();
+  renderParticipantHome();
 }
