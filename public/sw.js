@@ -1,4 +1,4 @@
-const CACHE = 'wichteln-v6';
+const CACHE = 'wichteln-v7';
 
 const STATIC_ASSETS = [
   '/',
