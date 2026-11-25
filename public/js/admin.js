@@ -27,7 +27,7 @@ export async function adminLoad() {
 export async function renderAdmin() {
   if (!await adminLoad()) return;
   const event = state.event, started = event.status === 'started';
-  const people = event.participants.length ? event.participants.map(p => `<div class="rounded-2xl bg-white px-4 py-4 ring-1 ring-black/5"><div class="flex items-center justify-between"><div class="min-w-0"><div class="font-bold text-pine">${esc(p.name)}</div><div class="mt-1 break-words text-xs text-slate-500">${p.wish ? esc(p.wish) : 'Kein Wunsch hinterlegt'} · ${p.exclusionsCount} Ausschlüsse</div></div><div class="ml-3 text-xl">${p.joined ? '✓' : '…'}</div></div></div>`).join('') : '<div class="rounded-2xl bg-cream p-5 text-sm text-slate-600">Noch keine Teilnehmer.</div>';
+  const people = event.participants.length ? event.participants.map(p => `<div class="rounded-2xl bg-white px-4 py-4 ring-1 ring-black/5"><div class="flex items-center justify-between"><div class="min-w-0"><div class="font-bold text-pine">${esc(p.name)}</div><div class="mt-1 break-words text-xs text-slate-500">${p.wish ? esc(p.wish) : 'Kein Wunsch hinterlegt'} · ${p.exclusionsCount} Ausschlüsse</div></div><div class="ml-3 text-xl">${p.joined ? '✓' : '…'}</div></div><button type="button" data-action="copyParticipantLink" data-participant-token="${esc(p.personalToken)}" data-participant-name="${esc(p.name)}" class="btn mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/70 px-4 py-2.5 text-sm font-bold text-pine ring-1 ring-black/5 hover:bg-white">${icon('copy', 'w-4 h-4')} Persönlichen Link kopieren</button></div>`).join('') : '<div class="rounded-2xl bg-cream p-5 text-sm text-slate-600">Noch keine Teilnehmer.</div>';
   const personalButton = localStorage.getItem('wichteln-organizer-participant-token') ? button(`${icon('gift', 'w-4 h-4')} Mein persönlicher Wichtel-Link`, 'copyOrganizerParticipantLink', false) : '';
   shell(`${header('Organisator')}<div class="card glass p-6 sm:p-8"><div class="flex items-start justify-between gap-4"><div><div class="text-4xl">🎄</div><h1 class="serif mt-3 text-4xl text-pine">${esc(event.name)}</h1><p class="mt-2 text-sm text-slate-500">${event.participants.length} Teilnehmer</p></div><span class="rounded-full px-3 py-1 text-xs font-bold ${started ? 'bg-gold/20 text-pine' : 'bg-pine/10 text-pine'}">${started ? 'Ausgelost' : 'Anmeldung offen'}</span></div><div class="mt-7 space-y-3">${people}</div><div class="mt-6 grid gap-3">${!started ? button(`${icon('spark', 'w-4 h-4')} Wichteln starten`, 'startDraw') : button(`${icon('eye', 'w-4 h-4')} Zuordnungen anzeigen`, 'showAssignments', false)}${button(`${icon('copy', 'w-4 h-4')} Teilnehmer-Link kopieren`, 'copyPublicLink', false)}${personalButton}</div><div id="assignments" class="mt-4"></div></div>`);
 }
@@ -56,6 +56,14 @@ export async function copyOrganizerParticipantLink() {
   const token = localStorage.getItem('wichteln-organizer-participant-token');
   if (!token) { alert('Kein persönlicher Teilnehmer-Link gespeichert.'); return; }
   await copyText(location.origin + `?p=${encodeURIComponent(token)}`, 'Dein persönlicher Wichtel-Link wurde kopiert!');
+}
+
+export async function copyParticipantLink(token, name) {
+  if (!token) { alert('Der persönliche Teilnehmer-Link ist nicht verfügbar.'); return; }
+  await copyText(
+    location.origin + `?p=${encodeURIComponent(token)}`,
+    `Der persönliche Link von ${name || 'diesem Teilnehmer'} wurde kopiert!`
+  );
 }
 
 export async function copyPublicLink() {
