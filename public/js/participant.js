@@ -101,6 +101,7 @@ export function markRevealSeen() {
 
 function revealAssignment() {
   const names = document.getElementById('revealNames');
+  const question = document.getElementById('revealQuestion');
   const assignment = document.getElementById('revealedAssignment');
   markRevealSeen();
   stopNameCycle();
@@ -111,6 +112,7 @@ function revealAssignment() {
   }
 
   names.hidden = true;
+  if (question) question.hidden = true;
   assignment.hidden = false;
 }
 
@@ -120,7 +122,7 @@ export function wichtelAnimation() {
   const names = recipients.map((person, index) => `<span class="participant-name-carousel__name${index === 0 ? ' is-active' : ''}" aria-hidden="${index !== 0}">${esc(person.name)}</span>`).join('');
   const assignment = state.joined?.assignment;
   const receiverWish = assignment?.receiverWish?.trim() || '';
-  shell(`${header('Deine Auslosung')}<div class="card glass p-6 text-center sm:p-10"><div class="mx-auto max-w-md"><div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">Ein kleiner Moment …</div><h1 class="serif text-3xl text-pine">Der Wichtel greift in seinen Sack</h1><div class="mx-auto mt-5 flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white"><video id="revealVideo" src="/wichtel_white_fade.mp4" autoplay muted playsinline preload="auto" class="h-full w-full object-contain"></video></div><p class="mt-5 text-sm leading-6 text-slate-600">Welchen Namen wird der Wichtel wohl auf seinem Zettel stehen haben …</p><div id="revealNames" class="mt-4 rounded-2xl bg-pine px-5 py-5 text-center text-white"><div class="participant-name-carousel" aria-label="Mögliche Wichtel" aria-live="off">${names}</div></div><div id="revealedAssignment" hidden><div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><div class="text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h2 class="serif mt-2 text-4xl">${esc(assignment?.receiverName || '')}</h2></div><div class="mt-5 rounded-3xl bg-cream p-5 text-left"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 ${receiverWish ? 'text-pine' : 'wish-missing'}">${esc(receiverWish || 'Hat leider keinen Wunsch genannt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div></div></div></div>`);
+  shell(`${header('Deine Auslosung')}<div class="card glass p-6 text-center sm:p-10"><div class="mx-auto max-w-md"><div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">Ein kleiner Moment …</div><h1 class="serif text-3xl text-pine">Der Wichtel greift in seinen Sack</h1><div class="mx-auto mt-5 flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white"><video id="revealVideo" src="/wichtel_white_fade.mp4" autoplay muted playsinline preload="auto" class="h-full w-full object-contain"></video></div><p id="revealQuestion" class="mt-5 text-sm leading-6 text-slate-600">Welchen Namen wird der Wichtel wohl auf seinem Zettel stehen haben …</p><div id="revealNames" class="mt-4 rounded-2xl bg-pine px-5 py-5 text-center text-white"><div class="participant-name-carousel" aria-label="Mögliche Wichtel" aria-live="off">${names}</div></div><div id="revealedAssignment" hidden><div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><div class="text-5xl">🎁</div><div class="mt-3 text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h2 class="serif mt-2 text-4xl">${esc(assignment?.receiverName || '')}</h2></div><div class="mt-5 rounded-3xl bg-cream p-5 text-left"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 ${receiverWish ? 'text-pine' : 'wish-missing'}">${esc(receiverWish || 'Hat leider keinen Wunsch genannt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div></div></div></div>`);
   const video = document.getElementById('revealVideo');
   if (!video) { console.error('Das Auslosungsvideo wurde nicht gefunden.'); return; }
   video.addEventListener('ended', revealAssignment, { once: true });
