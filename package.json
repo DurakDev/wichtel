@@ -5,6 +5,7 @@
   "description": "Mobile-first Secret Santa PWA with Cloudflare Worker and D1",
   "scripts": {
     "build": "tailwindcss -i ./src/tailwind.css -o ./public/tailwind.css --minify",
+    "server": "npm run build && wrangler d1 execute wichtel-db --local --file=./schema.sql && wrangler dev --local",
     "deploy": "npm run build && wrangler deploy",
     "db:init": "wrangler d1 execute wichtel-db --remote --file=./schema.sql"
   },
