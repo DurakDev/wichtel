@@ -39,7 +39,7 @@ export function nextName() {
 }
 
 export function renderWish() {
-  shell(`${header('Hallo, ' + state.name + '!')}${progress(2)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><h1 class="serif text-4xl text-pine">Was könnte dein Wichtel dir schenken?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Ganz konkret oder nur eine kleine Idee. Du kannst das später jederzeit ändern.</p><div id="join-form" class="scroll-mt-4"><textarea id="wish" rows="5" class="mt-6 w-full resize-none rounded-2xl border-0 bg-white p-4 shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="z. B. ein Buch, etwas zum Zeichnen, einen Gutschein …">${esc(state.wish)}</textarea><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück', 'renderJoin', false)}${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'saveWish')}</div></div><p class="mt-2 text-xs text-slate-400">Optional – keine Idee? Dann lass das Feld einfach leer.</p></div>`);
+  shell(`${header('Hallo, ' + state.name + '!')}${progress(2)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><h1 class="serif text-4xl text-pine">Was könnte dein Wichtel dir schenken?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Ganz konkret oder nur eine kleine Idee. Du kannst das später jederzeit ändern.</p><div id="join-form" class="scroll-mt-4"><textarea id="wish" rows="5" class="mt-6 w-full resize-none rounded-2xl border-0 bg-white p-4 shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="z. B. ein Buch, etwas zum Zeichnen, einen Gutschein …">${esc(state.wish)}</textarea><div class="mt-5">${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'saveWish')}</div></div><p class="mt-2 text-xs text-slate-400">Optional – keine Idee? Dann lass das Feld einfach leer.</p></div>`);
   keepJoinFormVisible();
 }
 
@@ -59,7 +59,7 @@ export async function loadParticipants() {
 
 export function renderExclusions() {
   const people = state.participants.length ? state.participants.map(p => `<label class="flex cursor-pointer items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-black/5"><span class="font-semibold text-pine">${esc(p.name)}</span><input type="checkbox" value="${esc(p.id)}" ${state.exclusions.includes(p.id) ? 'checked' : ''} class="h-5 w-5 accent-pine"/></label>`).join('') : '<div class="rounded-2xl bg-cream p-4 text-sm text-slate-600">Weitere Teilnehmer erscheinen hier, sobald sie sich angemeldet haben.</div>';
-  shell(`${header('Schritt 3 von 3')}${progress(3)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🚫</div><h1 class="serif text-4xl text-pine">Gibt es jemanden, den du nicht ziehen möchtest?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Du musst niemanden ausschließen. Du kannst deine Auswahl später noch ändern.</p><div class="mt-6 space-y-2">${people}</div><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück', 'renderWish', false)}${button(`${icon('check', 'w-4 h-4')} Teilnahme bestätigen`, 'joinNow')}</div></div>`);
+  shell(`${header('Schritt 3 von 3')}${progress(3)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🚫</div><h1 class="serif text-4xl text-pine">Gibt es jemanden, den du nicht ziehen möchtest?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Du musst niemanden ausschließen. Du kannst deine Auswahl später noch ändern.</p><div class="mt-6 space-y-2">${people}</div><div class="mt-5">${button(`${icon('check', 'w-4 h-4')} Teilnahme bestätigen`, 'joinNow')}</div></div>`);
 }
 
 export async function joinNow() {
