@@ -4,9 +4,26 @@ import { button, copyText, esc, getJson, header, icon, progress, shell } from '.
 function keepJoinFormVisible() {
   const form = document.querySelector('#join-form');
   const field = form?.querySelector('input, textarea');
-  if (!form || !field) return;
+  const continueButton = form?.querySelector('button[data-action]');
+  const viewport = window.visualViewport;
+  if (!form || !field || !continueButton) return;
+
+  let scrollTimer;
+  const revealContinueButton = () => {
+    window.clearTimeout(scrollTimer);
+    scrollTimer = window.setTimeout(() => {
+      if (document.activeElement === field) {
+        continueButton.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }, 120);
+  };
   field.addEventListener('focus', () => {
-    window.setTimeout(() => form.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
+    revealContinueButton();
+    viewport?.addEventListener('resize', revealContinueButton);
+  });
+  field.addEventListener('blur', () => {
+    window.clearTimeout(scrollTimer);
+    viewport?.removeEventListener('resize', revealContinueButton);
   });
 }
 
