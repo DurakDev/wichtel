@@ -39,7 +39,7 @@ function participantWishesAllowed() {
 function renderRecipientNames(recipients) {
   return recipients.map((person, index) => {
     const name = `<span class="participant-name-carousel__name${index === 0 ? ' is-active' : ''}" aria-hidden="${index !== 0}">${esc(person.name)}</span>`;
-    const separator = index < recipients.length - 1
+    const separator = recipients.length > 1
       ? '<span class="participant-name-carousel__name text-gold" aria-hidden="true">oder</span>'
       : '';
     return name + separator;
