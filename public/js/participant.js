@@ -2,7 +2,6 @@ import { API, participantToken, state } from './shared.js';
 import { button, esc, getJson, header, icon, shell, showMessage } from './shared.js';
 import { renderJoin } from './join.js';
 
-let revealTimer = null;
 let nameCycleTimer = null;
 
 function stopNameCycle() {
@@ -10,6 +9,27 @@ function stopNameCycle() {
     clearInterval(nameCycleTimer);
     nameCycleTimer = null;
   }
+}
+
+function startNameCycle(carousel) {
+  const nameElements = carousel?.querySelectorAll('.participant-name-carousel__name') || [];
+  if (nameElements.length < 2) return;
+
+  let activeIndex = 0;
+  nameCycleTimer = setInterval(() => {
+    nameElements[activeIndex].classList.remove('is-active');
+    nameElements[activeIndex].setAttribute('aria-hidden', 'true');
+    activeIndex = (activeIndex + 1) % nameElements.length;
+    nameElements[activeIndex].classList.add('is-active');
+    nameElements[activeIndex].setAttribute('aria-hidden', 'false');
+  }, 2600);
+}
+
+function possibleRecipients() {
+  const participants = state.joined?.participants || state.participants;
+  const exclusions = new Set(state.joined?.participant?.exclusions || state.exclusions);
+  const participantId = state.joined?.participant?.id;
+  return participants.filter(person => person.id !== participantId && !exclusions.has(person.id));
 }
 
 function currentParticipantToken() {
@@ -32,31 +52,17 @@ export function renderParticipantHome() {
   stopNameCycle();
 
   const wish = state.wish.trim();
-  const participants = state.joined.participants || state.participants;
-  const exclusions = new Set(state.joined.participant?.exclusions || state.exclusions);
-  const participantId = state.joined.participant?.id;
-  const possibleRecipients = participants.filter(person => person.id !== participantId && !exclusions.has(person.id));
-  const names = possibleRecipients.length >= 2
-    ? possibleRecipients.map((person, index) => `<span class="participant-name-carousel__name${index === 0 ? ' is-active' : ''}" aria-hidden="${index !== 0}">${esc(person.name)}</span>`).join('')
+  const recipients = possibleRecipients();
+  const names = recipients.length >= 2
+    ? recipients.map((person, index) => `<span class="participant-name-carousel__name${index === 0 ? ' is-active' : ''}" aria-hidden="${index !== 0}">${esc(person.name)}</span>`).join('')
     : '';
-  const animationBox = possibleRecipients.length >= 2
+  const animationBox = recipients.length >= 2
     ? `<div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><p class="text-xs font-bold uppercase tracking-wider text-gold">Vielleicht ist es …</p><div class="participant-name-carousel mt-2" aria-label="Mögliche Wichtel" aria-live="off">${names}</div></div>`
     : '';
 
   shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na ${esc(state.name)}, wen wirst du wohl ziehen?</h1>${animationBox}<p class="mt-4 text-center text-sm leading-6 text-slate-600">Bis zur Auslosung bleibt es spannend. Hier erfährst du später, wen du beschenken darfst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm ${wish ? 'font-semibold text-pine' : 'wish-missing'}">${esc(wish || 'Vergiss nicht, einen Wunsch zu nennen.')}</p></div><div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div></div>`);
 
-  const carousel = document.querySelector('.participant-name-carousel');
-  const nameElements = carousel?.querySelectorAll('.participant-name-carousel__name') || [];
-  if (nameElements.length < 2) return;
-
-  let activeIndex = 0;
-  nameCycleTimer = setInterval(() => {
-    nameElements[activeIndex].classList.remove('is-active');
-    nameElements[activeIndex].setAttribute('aria-hidden', 'true');
-    activeIndex = (activeIndex + 1) % nameElements.length;
-    nameElements[activeIndex].classList.add('is-active');
-    nameElements[activeIndex].setAttribute('aria-hidden', 'false');
-  }, 2600);
+  startNameCycle(document.querySelector('.participant-name-carousel'));
 }
 
 export function renderEdit() {
@@ -88,20 +94,40 @@ export function markRevealSeen() {
   if (token) localStorage.setItem('wichteln-revealed-' + token, '1');
 }
 
-export function wichtelAnimation() {
+function revealAssignment() {
+  const names = document.getElementById('revealNames');
+  const assignment = document.getElementById('revealedAssignment');
+  markRevealSeen();
   stopNameCycle();
-  console.log('🎄 wichtelAnimation() gestartet'); if (revealTimer) clearTimeout(revealTimer);
-  shell(`${header('Deine Auslosung')}<div class="card glass p-6 sm:p-10 text-center"><div class="mx-auto max-w-md"><div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">Ein kleiner Moment …</div><div class="mx-auto flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white"><video id="revealVideo" src="/wichtel_white_fade.mp4" autoplay muted playsinline preload="auto" controls class="h-full w-full object-contain"></video></div><h1 class="serif mt-5 text-3xl text-pine">Der Wichtel greift in den Sack …</h1><p class="mt-3 text-xs text-slate-400">Dein Geschenkgeheimnis wird gleich gelüftet.</p><div class="mt-5">${button('Überspringen', 'skipReveal', false)}</div></div></div>`);
-  const video = document.getElementById('revealVideo');
-  if (!video) { console.error('❌ revealVideo wurde NICHT gefunden!'); return; }
-  video.muted = true;
-  const finishReveal = () => { markRevealSeen(); if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; } renderResult(); };
-  video.addEventListener('ended', finishReveal); video.addEventListener('error', () => console.error('❌ VIDEO FEHLER:', video.error));
-  revealTimer = setTimeout(() => { if (video.currentTime === 0) console.warn('⏱️ Video konnte nicht rechtzeitig starten.'); }, 5000);
-  video.play().then(() => console.log('▶️ Video gestartet')).catch(error => console.warn('❌ Automatische Wiedergabe blockiert:', error));
+
+  if (!names || !assignment) {
+    renderResult();
+    return;
+  }
+
+  names.hidden = true;
+  assignment.hidden = false;
 }
 
-export function skipReveal() { if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; } markRevealSeen(); renderResult(); }
+export function wichtelAnimation() {
+  stopNameCycle();
+  const recipients = possibleRecipients();
+  const names = recipients.map((person, index) => `<span class="participant-name-carousel__name${index === 0 ? ' is-active' : ''}" aria-hidden="${index !== 0}">${esc(person.name)}</span>`).join('');
+  const assignment = state.joined?.assignment;
+  const receiverWish = assignment?.receiverWish?.trim() || '';
+  shell(`${header('Deine Auslosung')}<div class="card glass p-6 text-center sm:p-10"><div class="mx-auto max-w-md"><div class="mb-4 text-sm font-bold uppercase tracking-[.2em] text-gold">Ein kleiner Moment …</div><h1 class="serif text-3xl text-pine">Der Wichtel greift in seinen Sack</h1><div class="mx-auto mt-5 flex h-64 w-64 items-center justify-center overflow-hidden rounded-3xl bg-white"><video id="revealVideo" src="/wichtel_white_fade.mp4" autoplay muted playsinline preload="auto" class="h-full w-full object-contain"></video></div><p class="mt-5 text-sm leading-6 text-slate-600">Welchen Namen wird der Wichtel wohl auf seinem Zettel stehen haben …</p><div id="revealNames" class="mt-4 rounded-2xl bg-pine px-5 py-5 text-center text-white"><div class="participant-name-carousel" aria-label="Mögliche Wichtel" aria-live="off">${names}</div></div><div id="revealedAssignment" hidden><div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><div class="text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h2 class="serif mt-2 text-4xl">${esc(assignment?.receiverName || '')}</h2></div><div class="mt-5 rounded-3xl bg-cream p-5 text-left"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 ${receiverWish ? 'text-pine' : 'wish-missing'}">${esc(receiverWish || 'Hat leider keinen Wunsch genannt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div></div></div></div>`);
+  const video = document.getElementById('revealVideo');
+  if (!video) { console.error('Das Auslosungsvideo wurde nicht gefunden.'); return; }
+  video.addEventListener('ended', revealAssignment, { once: true });
+  video.addEventListener('error', () => {
+    console.error('Das Auslosungsvideo konnte nicht abgespielt werden.', video.error);
+    revealAssignment();
+  }, { once: true });
+  startNameCycle(document.querySelector('#revealNames .participant-name-carousel'));
+  video.play().catch(error => console.warn('Die automatische Wiedergabe des Auslosungsvideos wurde blockiert.', error));
+}
+
+export function skipReveal() { revealAssignment(); }
 
 export function renderResult() {
   stopNameCycle();
