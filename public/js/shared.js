@@ -33,7 +33,7 @@ export async function getJson(url, options = {}) {
 
 export function shell(content, title = 'Wichteln') {
   document.title = title;
-  app.innerHTML = `<div class="snow" aria-hidden="true"><span>✦</span><span>❄</span><span>✧</span><span>❄</span><span>✦</span></div><main class="relative min-h-screen px-4 py-6 sm:py-10"><div class="mx-auto max-w-2xl">${content}</div></main><small class="site-watermark">Copyright 2026 by DurakDev</small>`;
+  app.innerHTML = `<div class="snow" aria-hidden="true"><span>✦</span><span>❄</span><span>✧</span><span>❄</span><span>✦</span></div><main class="relative min-h-screen px-4 py-6 sm:py-10"><div class="mx-auto max-w-2xl">${content}</div></main><small class="site-watermark">&copy; 2026 by DurakDev</small>`;
 }
 
 export function showMessage(message, type = 'error') {
