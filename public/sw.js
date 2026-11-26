@@ -83,6 +83,12 @@ self.addEventListener('fetch', event => {
   // Use cached static files when available, otherwise fetch from network.
   event.respondWith(
     caches.match(event.request)
-      .then(cached => cached || fetch(event.request))
+      .then(cached => cached || fetch(event.request).catch(() => new Response(
+        'Die Ressource ist momentan nicht erreichbar. Bitte prüfe deine Verbindung und lade die Seite erneut.',
+        {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+        }
+      )))
   );
 });
