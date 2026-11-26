@@ -30,6 +30,7 @@ function keepJoinFormVisible() {
 export function renderJoin() {
   shell(`${header('Deine Einladung')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 pb-7 pt-8 text-white"><div class="mb-5 text-5xl">🎄</div><h1 class="serif text-4xl leading-tight sm:text-5xl">Du bist eingeladen!</h1><p class="mt-3 max-w-md text-sm leading-6 text-white/75">Schön, dass du beim Wichteln dabei bist. Wir machen es ganz einfach.</p></div><div class="p-6 sm:p-8">${progress(1)}<div id="join-form" class="scroll-mt-4"><label class="mb-2 block text-sm font-bold text-pine">Wie heißt du?</label><input id="name" autocomplete="name" value="${esc(state.name)}" class="w-full rounded-2xl border-0 bg-white px-4 py-4 text-lg shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="Dein Name"/><div class="mt-5">${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'nextName')}</div></div></div></div>`);
   keepJoinFormVisible();
+  if (eventSlug && !state.event) loadParticipants();
 }
 
 export function nextName() {
@@ -53,7 +54,10 @@ export async function loadParticipants() {
   try {
     const { response, data } = await getJson(`${API}/events/${encodeURIComponent(eventSlug)}`);
     if (!response.ok) { showMessage(data.error || 'Die Wichtelrunde konnte nicht geladen werden.'); return false; }
-    state.event = data; state.participants = data.participants || []; return true;
+    state.event = data; state.participants = data.participants || [];
+    const eventTitle = document.querySelector('#event-title');
+    if (eventTitle) eventTitle.textContent = data.name;
+    return true;
   } catch (error) { showMessage(`Fehler beim Laden der Wichtelrunde. ${error.message}`); return false; }
 }
 

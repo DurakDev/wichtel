@@ -101,7 +101,8 @@ export function confirmDialog(title, description, confirmLabel, danger = false) 
 }
 
 export function header(sub = '') {
-  return `<div class="mb-7 flex items-center justify-between"><div class="flex items-center gap-3"><div class="grid h-11 w-11 place-items-center rounded-2xl bg-pine text-2xl text-white shadow-lg">🎁</div><div><div class="font-bold tracking-tight text-pine">Wichteln</div><div class="text-xs text-slate-500">${esc(sub)}</div></div></div></div>`;
+  const eventName = state.event?.name || state.joined?.event?.name || 'Wichteln';
+  return `<div class="mb-7 flex items-center justify-between"><div class="flex items-center gap-3"><div class="grid h-11 w-11 place-items-center rounded-2xl bg-pine text-2xl text-white shadow-lg">🎁</div><div><div id="event-title" class="font-bold tracking-tight text-pine">${esc(eventName)}</div><div class="text-xs text-slate-500">${esc(sub)}</div></div></div></div>`;
 }
 
 export function button(label, action, primary = true, id = '') {
