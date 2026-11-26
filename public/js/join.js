@@ -1,8 +1,18 @@
 import { API, eventSlug, state } from './shared.js';
 import { button, copyText, esc, getJson, header, icon, progress, shell } from './shared.js';
 
+function keepJoinFormVisible() {
+  const form = document.querySelector('#join-form');
+  const field = form?.querySelector('input, textarea');
+  if (!form || !field) return;
+  field.addEventListener('focus', () => {
+    window.setTimeout(() => form.scrollIntoView({ block: 'start', behavior: 'smooth' }), 250);
+  });
+}
+
 export function renderJoin() {
-  shell(`${header('Deine Einladung')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 pb-7 pt-8 text-white"><div class="mb-5 text-5xl">🎄</div><h1 class="serif text-4xl leading-tight sm:text-5xl">Du bist eingeladen!</h1><p class="mt-3 max-w-md text-sm leading-6 text-white/75">Schön, dass du beim Wichteln dabei bist. Wir machen es ganz einfach.</p></div><div class="p-6 sm:p-8">${progress(1)}<label class="mb-2 block text-sm font-bold text-pine">Wie heißt du?</label><input id="name" autofocus autocomplete="name" value="${esc(state.name)}" class="w-full rounded-2xl border-0 bg-white px-4 py-4 text-lg shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="Dein Name"/><div class="mt-5">${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'nextName')}</div></div></div>`);
+  shell(`${header('Deine Einladung')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 pb-7 pt-8 text-white"><div class="mb-5 text-5xl">🎄</div><h1 class="serif text-4xl leading-tight sm:text-5xl">Du bist eingeladen!</h1><p class="mt-3 max-w-md text-sm leading-6 text-white/75">Schön, dass du beim Wichteln dabei bist. Wir machen es ganz einfach.</p></div><div class="p-6 sm:p-8">${progress(1)}<div id="join-form" class="scroll-mt-4"><label class="mb-2 block text-sm font-bold text-pine">Wie heißt du?</label><input id="name" autocomplete="name" value="${esc(state.name)}" class="w-full rounded-2xl border-0 bg-white px-4 py-4 text-lg shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="Dein Name"/><div class="mt-5">${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'nextName')}</div></div></div></div>`);
+  keepJoinFormVisible();
 }
 
 export function nextName() {
@@ -16,7 +26,8 @@ export function renderIntro() {
 }
 
 export function renderWish() {
-  shell(`${header('Schritt 2 von 3')}${progress(2)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><h1 class="serif text-4xl text-pine">Was könnte dein Wichtel dir schenken?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Ganz konkret oder nur eine kleine Idee. Du kannst das später jederzeit ändern.</p><textarea id="wish" rows="5" class="mt-6 w-full resize-none rounded-2xl border-0 bg-white p-4 shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="z. B. ein Buch, etwas zum Zeichnen, einen Gutschein …">${esc(state.wish)}</textarea><p class="mt-2 text-xs text-slate-400">Optional – keine Idee? Dann lass das Feld einfach leer.</p><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück', 'renderIntro', false)}${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'saveWish')}</div></div>`);
+  shell(`${header('Schritt 2 von 3')}${progress(2)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><h1 class="serif text-4xl text-pine">Was könnte dein Wichtel dir schenken?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Ganz konkret oder nur eine kleine Idee. Du kannst das später jederzeit ändern.</p><div id="join-form" class="scroll-mt-4"><textarea id="wish" rows="5" class="mt-6 w-full resize-none rounded-2xl border-0 bg-white p-4 shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="z. B. ein Buch, etwas zum Zeichnen, einen Gutschein …">${esc(state.wish)}</textarea><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück', 'renderIntro', false)}${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'saveWish')}</div></div><p class="mt-2 text-xs text-slate-400">Optional – keine Idee? Dann lass das Feld einfach leer.</p></div>`);
+  keepJoinFormVisible();
 }
 
 export async function saveWish() {
