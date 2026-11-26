@@ -52,6 +52,11 @@ export function renderParticipantHome() {
   stopNameCycle();
 
   const wish = state.wish.trim();
+  const started = state.joined.status === 'started';
+  const statusLabel = started ? 'Ausgelost' : 'Anmeldung offen';
+  const statusMessage = started
+    ? 'Die Auslosung ist abgeschlossen. Du kannst jetzt sehen, wen du beschenkst.'
+    : 'Bis zur Auslosung bleibt es spannend. Hier erfährst du später, wen du beschenken darfst. Solange der Status offen ist, kann sich die Teilnehmerzahl verändern.';
   const recipients = possibleRecipients();
   const names = recipients.length >= 2
     ? recipients.map((person, index) => `<span class="participant-name-carousel__name${index === 0 ? ' is-active' : ''}" aria-hidden="${index !== 0}">${esc(person.name)}</span>`).join('')
@@ -60,7 +65,7 @@ export function renderParticipantHome() {
     ? `<div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><p class="text-xs font-bold uppercase tracking-wider text-gold">Vielleicht ist es …</p><div class="participant-name-carousel mt-2" aria-label="Mögliche Wichtel" aria-live="off">${names}</div></div>`
     : '';
 
-  shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na ${esc(state.name)}, wen wirst du wohl ziehen?</h1>${animationBox}<p class="mt-4 text-center text-sm leading-6 text-slate-600">Bis zur Auslosung bleibt es spannend. Hier erfährst du später, wen du beschenken darfst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm ${wish ? 'font-semibold text-pine' : 'wish-missing'}">${esc(wish || 'Vergiss nicht, einen Wunsch zu nennen.')}</p></div><div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div></div>`);
+  shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 flex items-center justify-between gap-3"><div class="text-5xl">🎁</div><span class="rounded-full px-3 py-1 text-xs font-bold ${started ? 'bg-gold/20 text-pine' : 'bg-pine/10 text-pine'}">${statusLabel}</span></div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na ${esc(state.name)}, wen wirst du wohl ziehen?</h1>${animationBox}<p class="mt-4 text-center text-sm leading-6 text-slate-600">${statusMessage}</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm ${wish ? 'font-semibold text-pine' : 'wish-missing'}">${esc(wish || 'Vergiss nicht, einen Wunsch zu nennen.')}</p></div><div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div><p class="mt-5 text-center text-xs text-slate-400">Solltest du deinen persönlichen Link verloren haben, hilft dir der Organisator jederzeit weiter.</p></div>`);
 
   startNameCycle(document.querySelector('.participant-name-carousel'));
 }
