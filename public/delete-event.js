@@ -1,3 +1,5 @@
+import { showMessage } from './js/shared.js';
+
 const params = new URLSearchParams(window.location.search);
 const adminToken = params.get('admin');
 const app = document.querySelector('#app');
@@ -30,17 +32,17 @@ if (adminToken && app) {
       let data = {};
       try { data = await response.json(); } catch { /* use fallback below */ }
       if (!response.ok) {
-        window.alert(data.error || 'Die Wichtelaktion konnte nicht gelöscht werden.');
+        showMessage(data.error || 'Die Wichtelaktion konnte nicht gelöscht werden.');
         return;
       }
 
       localStorage.removeItem('wichteln-admin-token');
       localStorage.removeItem('wichteln-organizer-participant-token');
-      window.alert(data.message || 'Die Wichtelaktion wurde gelöscht.');
+      showMessage(data.message || 'Die Wichtelaktion wurde gelöscht.', 'success');
       history.replaceState({}, '', '/');
-      window.location.assign('/');
+      window.setTimeout(() => window.location.assign('/'), 1200);
     } catch (error) {
-      window.alert(`Die Wichtelaktion konnte nicht gelöscht werden.\n\n${error.message}`);
+      showMessage(`Die Wichtelaktion konnte nicht gelöscht werden. ${error.message}`);
     }
   }
 

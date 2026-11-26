@@ -36,6 +36,47 @@ export function shell(content, title = 'Wichteln') {
   app.innerHTML = `<div class="snow" aria-hidden="true"><span>✦</span><span>❄</span><span>✧</span><span>❄</span><span>✦</span></div><main class="relative min-h-screen px-4 py-6 sm:py-10"><div class="mx-auto max-w-2xl">${content}</div></main><small class="site-watermark">Copyright 2026 by DurakDev</small>`;
 }
 
+export function showMessage(message, type = 'error') {
+  let region = document.querySelector('#notifications');
+  if (!region) {
+    region = document.createElement('div');
+    region.id = 'notifications';
+    region.className = 'notification-region';
+    document.body.append(region);
+  }
+
+  const notification = document.createElement('div');
+  notification.className = `notification notification--${type}`;
+  notification.setAttribute('role', type === 'error' ? 'alert' : 'status');
+
+  const marker = document.createElement('span');
+  marker.className = 'notification__marker';
+  marker.setAttribute('aria-hidden', 'true');
+  marker.textContent = type === 'error' ? '!' : '✓';
+
+  const text = document.createElement('span');
+  text.className = 'notification__text';
+  text.textContent = message;
+
+  const close = document.createElement('button');
+  close.className = 'notification__close';
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Meldung schließen');
+  close.textContent = '×';
+
+  let timer;
+  const dismiss = () => {
+    window.clearTimeout(timer);
+    notification.classList.remove('is-visible');
+    window.setTimeout(() => notification.remove(), 220);
+  };
+  close.addEventListener('click', dismiss);
+  notification.append(marker, text, close);
+  region.append(notification);
+  requestAnimationFrame(() => notification.classList.add('is-visible'));
+  timer = window.setTimeout(dismiss, 1750);
+}
+
 export function header(sub = '') {
   return `<div class="mb-7 flex items-center justify-between"><div class="flex items-center gap-3"><div class="grid h-11 w-11 place-items-center rounded-2xl bg-pine text-2xl text-white shadow-lg">🎁</div><div><div class="font-bold tracking-tight text-pine">Wichteln</div><div class="text-xs text-slate-500">${esc(sub)}</div></div></div></div>`;
 }
@@ -50,9 +91,9 @@ export function progress(n) {
 
 export async function copyText(text, successMessage) {
   try {
-    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); alert(successMessage); return; }
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); showMessage(successMessage, 'success'); return; }
     const textarea = document.createElement('textarea'); textarea.value = text; textarea.style.position = 'fixed'; textarea.style.opacity = '0'; document.body.appendChild(textarea); textarea.focus(); textarea.select(); const copied = document.execCommand('copy'); textarea.remove();
-    if (copied) { alert(successMessage); return; }
+    if (copied) { showMessage(successMessage, 'success'); return; }
     throw new Error('Kopieren fehlgeschlagen.');
-  } catch { alert(`Der Link konnte nicht automatisch kopiert werden.\n\n${text}`); }
+  } catch { showMessage(`Der Link konnte nicht automatisch kopiert werden. Kopiere ihn bitte manuell:\n${text}`); }
 }

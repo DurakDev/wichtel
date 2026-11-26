@@ -1,5 +1,5 @@
 import { API, eventSlug, state } from './shared.js';
-import { button, copyText, esc, getJson, header, icon, progress, shell } from './shared.js';
+import { button, copyText, esc, getJson, header, icon, progress, shell, showMessage } from './shared.js';
 
 function keepJoinFormVisible() {
   const form = document.querySelector('#join-form');
@@ -34,7 +34,7 @@ export function renderJoin() {
 
 export function nextName() {
   const value = document.querySelector('#name')?.value.trim() || '';
-  if (!value) return alert('Bitte gib deinen Namen ein.');
+  if (!value) return showMessage('Bitte gib deinen Namen ein.');
   state.name = value; renderWish();
 }
 
@@ -49,12 +49,12 @@ export async function saveWish() {
 }
 
 export async function loadParticipants() {
-  if (!eventSlug) { alert('Die Wichtelrunde wurde nicht gefunden.'); return false; }
+  if (!eventSlug) { showMessage('Die Wichtelrunde wurde nicht gefunden.'); return false; }
   try {
     const { response, data } = await getJson(`${API}/events/${encodeURIComponent(eventSlug)}`);
-    if (!response.ok) { alert(data.error || 'Die Wichtelrunde konnte nicht geladen werden.'); return false; }
+    if (!response.ok) { showMessage(data.error || 'Die Wichtelrunde konnte nicht geladen werden.'); return false; }
     state.event = data; state.participants = data.participants || []; return true;
-  } catch (error) { alert(`Fehler beim Laden der Wichtelrunde.\n\n${error.message}`); return false; }
+  } catch (error) { showMessage(`Fehler beim Laden der Wichtelrunde. ${error.message}`); return false; }
 }
 
 export function renderExclusions() {
@@ -66,14 +66,15 @@ export async function joinNow() {
   state.exclusions = [...document.querySelectorAll('#app input[type="checkbox"]:checked')].map(input => input.value);
   try {
     const { response, data } = await getJson(`${API}/events/${encodeURIComponent(eventSlug)}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: state.name, wish: state.wish, exclusions: state.exclusions }) });
-    if (!response.ok) return alert(data.error || 'Die Teilnahme konnte nicht gespeichert werden.');
+    if (!response.ok) return showMessage(data.error || 'Die Teilnahme konnte nicht gespeichert werden.');
     state.joined = { status: 'open', participant: { id: data.participantId, name: state.name, wish: state.wish, exclusions: state.exclusions }, participants: state.participants, assignment: null };
     history.replaceState({}, '', `?p=${encodeURIComponent(data.token)}`); localStorage.setItem('wichteln-token', data.token); renderJoined();
-  } catch (error) { alert(`Verbindung zur Wichtel-App fehlgeschlagen.\n\n${error.message}`); }
+  } catch (error) { showMessage(`Verbindung zur Wichtel-App fehlgeschlagen. ${error.message}`); }
 }
 
 export function renderJoined() {
-  shell(`${header('Du bist dabei!')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎉</div><h1 class="serif text-4xl text-pine">Alles bereit!</h1><p class="mt-3 leading-7 text-slate-600">Bewahre deinen persönlichen Link gut auf. Hier kannst du deine Angaben später ändern und erfährst nach der Auslosung, wen du beschenkst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Deine Angaben</div><div class="mt-3 space-y-2 text-sm"><div><b>Name:</b> ${esc(state.name)}</div><div><b>Wunsch:</b> ${esc(state.wish || 'Noch kein Wunsch')}</div></div></div><div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben bearbeiten`, 'editParticipant', false)}</div><div class="mt-3">${button(`${icon('copy', 'w-4 h-4')} Persönlichen Link kopieren`, 'copyLink')}</div><p class="mt-3 text-center text-xs text-slate-400">Dein persönlicher Link bleibt auch nach der Auslosung gültig.</p></div>`);
+  const wish = state.wish.trim();
+  shell(`${header('Du bist dabei!')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎉</div><h1 class="serif text-4xl text-pine">Hallo, ${esc(state.name)}!</h1><p class="mt-3 leading-7 text-slate-600">Schön, dass du beim Wichteln dabei bist.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm ${wish ? 'font-semibold text-pine' : 'wish-missing'}">${esc(wish || 'Vergiss nicht, einen Wunsch zu nennen.')}</p></div><div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben bearbeiten`, 'editParticipant', false)}</div><div class="mt-3">${button(`${icon('copy', 'w-4 h-4')} Persönlichen Link kopieren`, 'copyLink')}</div><p class="mt-3 text-center text-xs text-slate-400">Dein persönlicher Link bleibt auch nach der Auslosung gültig.</p></div>`);
 }
 
 export async function copyLink() { await copyText(location.href, 'Persönlicher Link kopiert!'); }

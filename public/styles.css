@@ -12,5 +12,15 @@ button,input,textarea{font:inherit}.serif{font-family:'Playfair Display',serif}.
 .participant-name-carousel__name{grid-area:1/1;opacity:0;transform:translateY(.5rem);transition:opacity .45s ease,transform .45s ease}
 .participant-name-carousel__name.is-active{opacity:1;transform:translateY(0)}
 .site-watermark{position:fixed;right:calc(env(safe-area-inset-right,0px) + 1rem);bottom:calc(env(safe-area-inset-bottom,0px) + .75rem);z-index:20;padding:.35rem .5rem;border-radius:9999px;background:rgba(247,242,232,.88);color:rgba(16,38,29,.62);font-size:.65rem;line-height:1;pointer-events:none}
-@media(prefers-reduced-motion:reduce){.participant-name-carousel__name{transition:none}}
+.wish-missing{color:#64748b;font-style:italic}
+.notification-region{position:fixed;z-index:50;right:1rem;bottom:calc(env(safe-area-inset-bottom,0px) + 2.5rem);left:1rem;display:grid;justify-items:center;gap:.65rem;pointer-events:none}
+.notification{display:flex;width:min(100%,30rem);align-items:flex-start;gap:.75rem;padding:.9rem 1rem;border:1px solid rgba(255,255,255,.8);border-radius:1.1rem;background:rgba(255,255,255,.96);box-shadow:0 12px 40px rgba(16,38,29,.16);color:#17221d;opacity:0;transform:translateY(.5rem) scale(.98);transition:opacity .2s ease,transform .2s ease;pointer-events:auto}
+.notification.is-visible{opacity:1;transform:translateY(0) scale(1)}
+.notification--error .notification__marker{background:#fff0eb;color:#bd4d35}
+.notification--success .notification__marker{background:#e8f5ed;color:#26714a}
+.notification__marker{display:grid;width:1.65rem;height:1.65rem;flex:none;place-items:center;border-radius:999px;font-weight:800}
+.notification__text{flex:1;padding-top:.12rem;font-size:.9rem;font-weight:600;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere}
+.notification__close{flex:none;padding:0 .2rem;border:0;background:transparent;color:#64748b;font-size:1.4rem;line-height:1;cursor:pointer}
+.notification__close:hover{color:#17221d}
+@media(prefers-reduced-motion:reduce){.participant-name-carousel__name,.notification{transition:none}}
 @media(max-width:640px){.card{border-radius:24px}.desktop-only{display:none!important}}

@@ -1,5 +1,5 @@
 import { API, participantToken, state } from './shared.js';
-import { button, esc, getJson, header, icon, shell } from './shared.js';
+import { button, esc, getJson, header, icon, shell, showMessage } from './shared.js';
 import { renderJoin } from './join.js';
 
 let revealTimer = null;
@@ -12,21 +12,26 @@ function stopNameCycle() {
   }
 }
 
-export async function loadParticipant(token) {
-  if (!token) { alert('Kein persönlicher Link vorhanden.'); return false; }
-  try {
-    const { response, data } = await getJson(`${API}/p/${encodeURIComponent(token)}`);
-    if (!response.ok) { alert(data.error || 'Persönlicher Link ungültig.'); return false; }
-    state.joined = data; state.name = data.participant?.name || ''; state.wish = data.participant?.wish || ''; state.exclusions = data.participant?.exclusions || []; state.participants = data.participants || []; return true;
-  } catch (error) { alert(`Der persönliche Link konnte nicht geladen werden.\n\n${error.message}`); return false; }
+function currentParticipantToken() {
+  return new URLSearchParams(location.search).get('p') || participantToken;
 }
 
-export async function editParticipant() { if (await loadParticipant(participantToken)) renderEdit(); }
+export async function loadParticipant(token) {
+  if (!token) { showMessage('Kein persönlicher Link vorhanden.'); return false; }
+  try {
+    const { response, data } = await getJson(`${API}/p/${encodeURIComponent(token)}`);
+    if (!response.ok) { showMessage(data.error || 'Persönlicher Link ungültig.'); return false; }
+    state.joined = data; state.name = data.participant?.name || ''; state.wish = data.participant?.wish || ''; state.exclusions = data.participant?.exclusions || []; state.participants = data.participants || []; return true;
+  } catch (error) { showMessage(`Der persönliche Link konnte nicht geladen werden. ${error.message}`); return false; }
+}
+
+export async function editParticipant() { if (await loadParticipant(currentParticipantToken())) renderEdit(); }
 
 export function renderParticipantHome(successMessage = '') {
   if (!state.joined) return renderJoin();
   stopNameCycle();
 
+  const wish = state.wish.trim();
   const participants = state.joined.participants || state.participants;
   const exclusions = new Set(state.joined.participant?.exclusions || state.exclusions);
   const participantId = state.joined.participant?.id;
@@ -38,7 +43,7 @@ export function renderParticipantHome(successMessage = '') {
     ? `<div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><p class="text-xs font-bold uppercase tracking-wider text-gold">Vielleicht ist es …</p><div class="participant-name-carousel mt-2" aria-label="Mögliche Wichtel" aria-live="off">${names}</div></div>`
     : '';
 
-  shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na ${esc(state.name)},<br>wen wirst du wohl ziehen?</h1>${animationBox}<p class="mt-4 text-center text-sm leading-6 text-slate-600">Bis zur Auslosung bleibt es spannend. Hier erfährst du später, wen du beschenken darfst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm font-semibold text-pine">${esc(state.wish || 'Noch kein Wunsch hinterlegt')}</p></div>${successMessage ? `<p class="mt-4 rounded-2xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-800" role="status">✓ ${esc(successMessage)}</p>` : ''}<div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div></div>`);
+  shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na ${esc(state.name)}, wen wirst du wohl ziehen?</h1>${animationBox}<p class="mt-4 text-center text-sm leading-6 text-slate-600">Bis zur Auslosung bleibt es spannend. Hier erfährst du später, wen du beschenken darfst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm ${wish ? 'font-semibold text-pine' : 'wish-missing'}">${esc(wish || 'Vergiss nicht, einen Wunsch zu nennen.')}</p></div>${successMessage ? `<p class="mt-4 rounded-2xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-800" role="status">✓ ${esc(successMessage)}</p>` : ''}<div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div></div>`);
 
   const carousel = document.querySelector('.participant-name-carousel');
   const nameElements = carousel?.querySelectorAll('.participant-name-carousel__name') || [];
@@ -64,17 +69,21 @@ export function renderEdit() {
 
 export async function saveEdit() {
   if (!state.joined || state.joined.status === 'started') return;
+  const token = currentParticipantToken();
   const name = document.querySelector('#editName')?.value.trim() || '', wish = document.querySelector('#editWish')?.value.trim() || '';
-  if (!name) return alert('Bitte gib deinen Namen ein.');
+  if (!name) return showMessage('Bitte gib deinen Namen ein.');
   const exclusions = [...document.querySelectorAll('#app input[type="checkbox"]:checked')].map(input => input.value);
   try {
-    const { response, data } = await getJson(`${API}/p/${encodeURIComponent(participantToken)}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, wish, exclusions }) });
-    if (!response.ok) return alert(data.error || 'Speichern fehlgeschlagen.');
-    if (await loadParticipant(participantToken)) renderParticipantHome('Änderungen gespeichert. Deine Angaben sind aktuell.');
-  } catch (error) { alert(`Die Änderungen konnten nicht gespeichert werden.\n\n${error.message}`); }
+    const { response, data } = await getJson(`${API}/p/${encodeURIComponent(token)}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, wish, exclusions }) });
+    if (!response.ok) return showMessage(data.error || 'Speichern fehlgeschlagen.');
+    if (await loadParticipant(token)) renderParticipantHome('Änderungen gespeichert. Deine Angaben sind aktuell.');
+  } catch (error) { showMessage(`Die Änderungen konnten nicht gespeichert werden. ${error.message}`); }
 }
 
-export function markRevealSeen() { if (participantToken) localStorage.setItem('wichteln-revealed-' + participantToken, '1'); }
+export function markRevealSeen() {
+  const token = currentParticipantToken();
+  if (token) localStorage.setItem('wichteln-revealed-' + token, '1');
+}
 
 export function wichtelAnimation() {
   stopNameCycle();
@@ -95,14 +104,16 @@ export function renderResult() {
   stopNameCycle();
   if (!state.joined) return;
   const assignment = state.joined.assignment; if (!assignment) return renderEdit();
-  shell(`${header('Dein Wichtel')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 py-8 text-center text-white"><div class="text-5xl">🎁</div><div class="mt-3 text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h1 class="serif mt-2 text-5xl">${esc(assignment.receiverName)}</h1></div><div class="p-6 sm:p-8"><div class="rounded-3xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 text-pine">${esc(assignment.receiverWish || 'Dieser Wichtel hat keinen Wunsch hinterlegt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div></div></div>`);
+  const receiverWish = assignment.receiverWish?.trim() || '';
+  shell(`${header('Dein Wichtel')}<div class="card glass overflow-hidden"><div class="bg-pine px-6 py-8 text-center text-white"><div class="text-5xl">🎁</div><div class="mt-3 text-xs font-bold uppercase tracking-[.2em] text-gold">Du beschenkst</div><h1 class="serif mt-2 text-5xl">${esc(assignment.receiverName)}</h1></div><div class="p-6 sm:p-8"><div class="rounded-3xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Wunsch</div><p class="mt-3 text-lg leading-7 ${receiverWish ? 'text-pine' : 'wish-missing'}">${esc(receiverWish || 'Hat leider keinen Wunsch genannt.')}</p></div><div class="mt-5 rounded-2xl bg-pine/5 p-4 text-sm text-slate-600">🤫 Psst! Verrate niemandem, wen du bekommen hast.</div></div></div>`);
 }
 
 export async function initParticipant() {
-  if (!await loadParticipant(participantToken)) return;
+  const token = currentParticipantToken();
+  if (!await loadParticipant(token)) return;
   if (state.joined.status === 'started') {
     if (state.joined.assignment) {
-      const key = 'wichteln-revealed-' + participantToken;
+      const key = 'wichteln-revealed-' + token;
       if (!localStorage.getItem(key)) wichtelAnimation(); else renderResult();
     } else {
       renderEdit();
