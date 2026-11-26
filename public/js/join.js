@@ -35,15 +35,11 @@ export function renderJoin() {
 export function nextName() {
   const value = document.querySelector('#name')?.value.trim() || '';
   if (!value) return alert('Bitte gib deinen Namen ein.');
-  state.name = value; renderIntro();
-}
-
-export function renderIntro() {
-  shell(`${header('Hallo ' + state.name)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">✨</div><h1 class="serif text-4xl text-pine">Hallo ${esc(state.name)}!</h1><p class="mt-4 leading-7 text-slate-600">Schön, dass du dabei bist. Dein Wichtel wartet schon auf dich. 🎁</p><div class="my-7 rounded-2xl bg-cream p-5"><div class="font-bold text-pine">So funktioniert's</div><p class="mt-2 text-sm leading-6 text-slate-600">Du hinterlässt einen Wunsch und kannst Personen ausschließen. Später wird dir zufällig jemand zugeteilt.</p></div>${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'renderWish')}</div>`);
+  state.name = value; renderWish();
 }
 
 export function renderWish() {
-  shell(`${header('Schritt 2 von 3')}${progress(2)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><h1 class="serif text-4xl text-pine">Was könnte dein Wichtel dir schenken?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Ganz konkret oder nur eine kleine Idee. Du kannst das später jederzeit ändern.</p><div id="join-form" class="scroll-mt-4"><textarea id="wish" rows="5" class="mt-6 w-full resize-none rounded-2xl border-0 bg-white p-4 shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="z. B. ein Buch, etwas zum Zeichnen, einen Gutschein …">${esc(state.wish)}</textarea><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück', 'renderIntro', false)}${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'saveWish')}</div></div><p class="mt-2 text-xs text-slate-400">Optional – keine Idee? Dann lass das Feld einfach leer.</p></div>`);
+  shell(`${header('Hallo, ' + state.name + '!')}${progress(2)}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><h1 class="serif text-4xl text-pine">Was könnte dein Wichtel dir schenken?</h1><p class="mt-3 text-sm leading-6 text-slate-600">Ganz konkret oder nur eine kleine Idee. Du kannst das später jederzeit ändern.</p><div id="join-form" class="scroll-mt-4"><textarea id="wish" rows="5" class="mt-6 w-full resize-none rounded-2xl border-0 bg-white p-4 shadow-sm ring-1 ring-black/5 outline-none focus:ring-2 focus:ring-gold" placeholder="z. B. ein Buch, etwas zum Zeichnen, einen Gutschein …">${esc(state.wish)}</textarea><div class="mt-5 grid gap-3 sm:grid-cols-2">${button('Zurück', 'renderJoin', false)}${button(`${icon('arrow', 'w-4 h-4')} Weiter`, 'saveWish')}</div></div><p class="mt-2 text-xs text-slate-400">Optional – keine Idee? Dann lass das Feld einfach leer.</p></div>`);
   keepJoinFormVisible();
 }
 

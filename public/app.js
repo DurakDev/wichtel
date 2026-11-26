@@ -1,11 +1,10 @@
 import { app, adminToken, params, participantToken, eventSlug } from './js/shared.js';
-import { renderJoin, renderIntro, renderWish, nextName, saveWish, joinNow, copyLink } from './js/join.js';
+import { renderJoin, renderWish, nextName, saveWish, joinNow, copyLink } from './js/join.js';
 import { editParticipant, saveEdit, renderResult, renderParticipantHome, skipReveal, initParticipant } from './js/participant.js';
 import { createEvent, startDraw, showAssignments, copyPublicLink, copyOrganizerParticipantLink, copyParticipantLink, renderAdmin, renderHome } from './js/admin.js';
 
 const actions = {
   nextName,
-  renderIntro,
   renderWish,
   saveWish,
   joinNow,
