@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS events (
   name TEXT NOT NULL,
   admin_token TEXT UNIQUE NOT NULL,
   status TEXT NOT NULL DEFAULT 'open',
+  wishes_allowed INTEGER NOT NULL DEFAULT 1 CHECK (wishes_allowed IN (0, 1)),
   created_at INTEGER NOT NULL,
   started_at INTEGER
 );

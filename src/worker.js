@@ -195,10 +195,14 @@ export default {
         const eventId = crypto.randomUUID();
         const eventSlug = createSlug();
         const adminToken = token();
+        const wishesAllowed = body.wishesAllowed !== false;
         await env.DB.prepare(`
-          INSERT INTO events (id, slug, name, admin_token, status, created_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).bind(eventId, eventSlug, String(body.name).trim(), adminToken, "open", Date.now()).run();
+          INSERT INTO events (id, slug, name, admin_token, status, wishes_allowed, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          eventId, eventSlug, String(body.name).trim(), adminToken, "open",
+          wishesAllowed ? 1 : 0, Date.now()
+        ).run();
 
         let organizerParticipantToken = null;
         if (body.joinSelf) {
@@ -242,6 +246,7 @@ export default {
           slug: event.slug,
           name: event.name,
           status: event.status,
+          wishesAllowed: event.wishes_allowed !== 0,
           participants: participants.results.map((p) => ({ id: p.id, name: p.name })),
         });
       }
@@ -271,7 +276,8 @@ export default {
             (id, event_id, name, wish, personal_token, created_at)
           VALUES (?, ?, ?, ?, ?, ?)
         `).bind(
-          participantId, event.id, String(body.name).trim(), body.wish || "",
+          participantId, event.id, String(body.name).trim(),
+          event.wishes_allowed !== 0 ? body.wish || "" : "",
           personalToken, Date.now()
         ).run();
 
@@ -332,7 +338,11 @@ export default {
         return json({
           ok: true,
           status: event.status,
-          event: { name: event.name, slug: event.slug },
+          event: {
+            name: event.name,
+            slug: event.slug,
+            wishesAllowed: event.wishes_allowed !== 0,
+          },
           participant: {
             id: participant.id,
             name: participant.name,
@@ -359,7 +369,7 @@ export default {
           return json({ ok: false, error: "Persönlicher Link ungültig." }, 404);
         }
         const event = await env.DB.prepare(`
-          SELECT status FROM events WHERE id = ?
+          SELECT status, wishes_allowed FROM events WHERE id = ?
         `).bind(participant.event_id).first();
         if (event.status !== "open") {
           return json({ ok: false, error: "Die Auslosung wurde bereits gestartet." }, 409);
@@ -371,7 +381,11 @@ export default {
         }
         await env.DB.prepare(`
           UPDATE participants SET name = ?, wish = ? WHERE id = ?
-        `).bind(String(body.name).trim(), body.wish || "", participant.id).run();
+        `).bind(
+          String(body.name).trim(),
+          event.wishes_allowed !== 0 ? body.wish || "" : "",
+          participant.id
+        ).run();
         await env.DB.prepare(`
           DELETE FROM exclusions WHERE participant_id = ?
         `).bind(participant.id).run();
@@ -414,6 +428,7 @@ export default {
           slug: event.slug,
           name: event.name,
           status: event.status,
+          wishesAllowed: event.wishes_allowed !== 0,
           participants: participants.results.map((p) => ({
             id: p.id,
             name: p.name,

@@ -113,8 +113,8 @@ export function button(label, action, primary = true, id = '') {
   return `<button ${id ? `id="${id}"` : ''} type="button" data-action="${action}" class="btn inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-bold ${primary ? 'bg-pine text-white shadow-lg shadow-pine/15 hover:bg-pine2' : 'bg-white/70 text-pine ring-1 ring-black/5 hover:bg-white'}">${label}</button>`;
 }
 
-export function progress(n) {
-  return `<div class="mb-7 flex gap-2">${[1, 2, 3].map(i => `<div class="progress-dot flex-1 ${i < n ? 'done' : i === n ? 'active' : ''}"></div>`).join('')}</div>`;
+export function progress(n, total = 3) {
+  return `<div class="mb-7 flex gap-2">${Array.from({ length: total }, (_, index) => index + 1).map(i => `<div class="progress-dot flex-1 ${i < n ? 'done' : i === n ? 'active' : ''}"></div>`).join('')}</div>`;
 }
 
 export async function copyText(text, successMessage) {
