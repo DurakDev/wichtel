@@ -1,5 +1,5 @@
 import { API, eventSlug, state } from './shared.js';
-import { button, copyText, esc, getJson, header, icon, progress, shell, showMessage } from './shared.js';
+import { button, copyText, esc, getJson, header, icon, progress, setPageTitle, shell, showMessage } from './shared.js';
 
 function keepJoinFormVisible() {
   const form = document.querySelector('#join-form');
@@ -55,6 +55,7 @@ export async function loadParticipants() {
     const { response, data } = await getJson(`${API}/events/${encodeURIComponent(eventSlug)}`);
     if (!response.ok) { showMessage(data.error || 'Die Wichtelrunde konnte nicht geladen werden.'); return false; }
     state.event = data; state.participants = data.participants || [];
+    setPageTitle();
     const eventTitle = document.querySelector('#event-title');
     if (eventTitle) eventTitle.textContent = data.name;
     return true;

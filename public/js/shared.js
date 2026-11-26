@@ -31,8 +31,12 @@ export async function getJson(url, options = {}) {
   return { response, data };
 }
 
-export function shell(content, title = 'Wichteln') {
-  document.title = title;
+export function setPageTitle(title = '') {
+  document.title = title || state.event?.name || state.joined?.event?.name || 'Wichteln';
+}
+
+export function shell(content, title) {
+  setPageTitle(title);
   app.innerHTML = `<div class="snow" aria-hidden="true"><span>✦</span><span>❄</span><span>✧</span><span>❄</span><span>✦</span></div><main class="relative min-h-screen px-4 py-6 sm:py-10"><div class="mx-auto max-w-2xl">${content}</div></main><small class="site-watermark">&copy; 2026 by DurakDev</small>`;
 }
 
