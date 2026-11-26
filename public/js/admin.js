@@ -1,4 +1,4 @@
-import { API, adminToken, state } from './shared.js';
+import { API, adminToken, confirmDialog, state } from './shared.js';
 import { button, copyText, esc, getJson, header, icon, shell, showMessage } from './shared.js';
 
 export async function createEvent() {
@@ -33,16 +33,26 @@ export async function renderAdmin() {
 }
 
 export async function startDraw() {
-  if (!confirm('Auslosung jetzt starten?\n\nDanach können Teilnehmer ihre Angaben nicht mehr ändern.')) return;
+  if (!await confirmDialog(
+    'Auslosung jetzt starten?',
+    'Danach können Teilnehmer ihre Angaben nicht mehr ändern.',
+    'Wichteln starten'
+  )) return;
+
   try {
     const { response, data } = await getJson(`${API}/admin/${encodeURIComponent(adminToken)}/start`, { method: 'POST' });
     if (!response.ok) { showMessage(data.error || 'Keine gültige Zuordnung gefunden.'); return; }
     await renderAdmin();
+    showMessage(data.message || 'Die Auslosung wurde erfolgreich gestartet.', 'success');
   } catch (error) { showMessage(`Die Auslosung konnte nicht gestartet werden. ${error.message}`); }
 }
 
 export async function showAssignments() {
-  if (!confirm('Möchtest du wirklich alle Wichtel-Zuordnungen anzeigen?\n\nDiese Ansicht ist vertraulich.')) return;
+  if (!await confirmDialog(
+    'Vertrauliche Ansicht öffnen?',
+    'Möchtest du wirklich alle Wichtel-Zuordnungen anzeigen? Diese Ansicht ist vertraulich.',
+    'Zuordnungen anzeigen'
+  )) return;
   try {
     const { response, data } = await getJson(`${API}/admin/${encodeURIComponent(adminToken)}/assignments`);
     if (!response.ok) { showMessage(data.error || 'Fehler beim Laden der Zuordnungen.'); return; }

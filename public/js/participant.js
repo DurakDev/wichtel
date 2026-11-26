@@ -27,7 +27,7 @@ export async function loadParticipant(token) {
 
 export async function editParticipant() { if (await loadParticipant(currentParticipantToken())) renderEdit(); }
 
-export function renderParticipantHome(successMessage = '') {
+export function renderParticipantHome() {
   if (!state.joined) return renderJoin();
   stopNameCycle();
 
@@ -43,7 +43,7 @@ export function renderParticipantHome(successMessage = '') {
     ? `<div class="mt-5 rounded-2xl bg-pine px-5 py-5 text-center text-white"><p class="text-xs font-bold uppercase tracking-wider text-gold">Vielleicht ist es …</p><div class="participant-name-carousel mt-2" aria-label="Mögliche Wichtel" aria-live="off">${names}</div></div>`
     : '';
 
-  shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na ${esc(state.name)}, wen wirst du wohl ziehen?</h1>${animationBox}<p class="mt-4 text-center text-sm leading-6 text-slate-600">Bis zur Auslosung bleibt es spannend. Hier erfährst du später, wen du beschenken darfst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm ${wish ? 'font-semibold text-pine' : 'wish-missing'}">${esc(wish || 'Vergiss nicht, einen Wunsch zu nennen.')}</p></div>${successMessage ? `<p class="mt-4 rounded-2xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-800" role="status">✓ ${esc(successMessage)}</p>` : ''}<div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div></div>`);
+  shell(`${header('Schön, dass du dabei bist')}<div class="card glass p-6 sm:p-8"><div class="mb-5 text-5xl">🎁</div><p class="text-sm font-bold uppercase tracking-[.15em] text-gold">Die Vorfreude steigt</p><h1 class="serif mt-2 text-3xl leading-tight text-pine sm:text-4xl">Na ${esc(state.name)}, wen wirst du wohl ziehen?</h1>${animationBox}<p class="mt-4 text-center text-sm leading-6 text-slate-600">Bis zur Auslosung bleibt es spannend. Hier erfährst du später, wen du beschenken darfst.</p><div class="mt-6 rounded-2xl bg-cream p-5"><div class="text-xs font-bold uppercase tracking-wider text-slate-500">Dein Wunsch</div><p class="mt-3 text-sm ${wish ? 'font-semibold text-pine' : 'wish-missing'}">${esc(wish || 'Vergiss nicht, einen Wunsch zu nennen.')}</p></div><div class="mt-5">${button(`${icon('edit', 'w-4 h-4')} Angaben ändern`, 'editParticipant', false)}</div></div>`);
 
   const carousel = document.querySelector('.participant-name-carousel');
   const nameElements = carousel?.querySelectorAll('.participant-name-carousel__name') || [];
@@ -76,7 +76,10 @@ export async function saveEdit() {
   try {
     const { response, data } = await getJson(`${API}/p/${encodeURIComponent(token)}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, wish, exclusions }) });
     if (!response.ok) return showMessage(data.error || 'Speichern fehlgeschlagen.');
-    if (await loadParticipant(token)) renderParticipantHome('Änderungen gespeichert. Deine Angaben sind aktuell.');
+    if (await loadParticipant(token)) {
+      renderParticipantHome();
+      showMessage('Änderungen gespeichert. Deine Angaben sind aktuell.', 'success');
+    }
   } catch (error) { showMessage(`Die Änderungen konnten nicht gespeichert werden. ${error.message}`); }
 }
 

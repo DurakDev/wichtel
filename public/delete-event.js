@@ -1,4 +1,4 @@
-import { showMessage } from './js/shared.js';
+import { confirmDialog, showMessage } from './js/shared.js';
 
 const params = new URLSearchParams(window.location.search);
 const adminToken = params.get('admin');
@@ -19,9 +19,11 @@ if (adminToken && app) {
   };
 
   async function deleteEvent() {
-    const confirmed = window.confirm(
-      'Möchtest du diese Wichtelaktion wirklich endgültig löschen?\n\n' +
-      'Die Aktion, alle Teilnehmer, Auslosungen und Verknüpfungen werden unwiderruflich gelöscht.'
+    const confirmed = await confirmDialog(
+      'Wichtelaktion endgültig löschen?',
+      'Die Aktion, alle Teilnehmer, Auslosungen und Verknüpfungen werden unwiderruflich gelöscht.',
+      'Endgültig löschen',
+      true
     );
     if (!confirmed) return;
 

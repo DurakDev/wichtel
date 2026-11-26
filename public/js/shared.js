@@ -77,6 +77,29 @@ export function showMessage(message, type = 'error') {
   timer = window.setTimeout(dismiss, 1750);
 }
 
+export function confirmDialog(title, description, confirmLabel, danger = false) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'confirmation-dialog';
+  dialog.setAttribute('aria-labelledby', 'confirmation-dialog-title');
+  dialog.setAttribute('aria-describedby', 'confirmation-dialog-description');
+  dialog.innerHTML = `
+    <h2 id="confirmation-dialog-title">${esc(title)}</h2>
+    <p id="confirmation-dialog-description">${esc(description)}</p>
+    <form method="dialog" class="confirmation-dialog__actions">
+      <button type="submit" value="cancel" class="confirmation-dialog__button confirmation-dialog__cancel" autofocus>Abbrechen</button>
+      <button type="submit" value="confirm" class="confirmation-dialog__button confirmation-dialog__confirm${danger ? ' confirmation-dialog__confirm--danger' : ''}">${esc(confirmLabel)}</button>
+    </form>`;
+  const confirmed = new Promise(resolve => {
+    dialog.addEventListener('close', () => {
+      resolve(dialog.returnValue === 'confirm');
+      dialog.remove();
+    }, { once: true });
+  });
+  document.body.append(dialog);
+  dialog.showModal();
+  return confirmed;
+}
+
 export function header(sub = '') {
   return `<div class="mb-7 flex items-center justify-between"><div class="flex items-center gap-3"><div class="grid h-11 w-11 place-items-center rounded-2xl bg-pine text-2xl text-white shadow-lg">🎁</div><div><div class="font-bold tracking-tight text-pine">Wichteln</div><div class="text-xs text-slate-500">${esc(sub)}</div></div></div></div>`;
 }
